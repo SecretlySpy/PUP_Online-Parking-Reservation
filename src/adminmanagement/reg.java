@@ -93,7 +93,7 @@ public class reg extends JFrame implements ActionListener {
 		lblClock.setBounds(1100, 10, 230, 30);
 		lblClock.setFont(f3);
 
-		title = new JLabel("Manalad Group of Company");
+		title = new JLabel("Archim's TechCorner");
 		title.setBounds(100, -10, 200, 100);
 		con.add(title);
 

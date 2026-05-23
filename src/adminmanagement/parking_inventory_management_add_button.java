@@ -110,7 +110,7 @@ public class parking_inventory_management_add_button extends JFrame implements A
 		Date1.setBounds(750, 150, 200, 30);
 		con.add(Date1);
 
-		title = new JLabel("Manalad Group of Company");
+		title = new JLabel("Archim's TechCorner");
 		title.setBounds(100, -10, 200, 100);
 		con.add(title);
 

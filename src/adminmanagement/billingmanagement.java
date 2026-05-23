@@ -81,7 +81,7 @@ public billingmanagement() {
 	
 		Date = new JDateChooser();
 		//photo = new JLabel ("/billingmanagement/imahe/m.jpg");
-		title = new JLabel ("Manalad Group of Company");
+		title = new JLabel ("Archim's TechCorner");
 		invoc = new JLabel ("Invoice #:");
 		cusdet = new JLabel ("----------------------------CUSTOMER DETAILS-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 		cusnam = new JLabel ("Customer Name:");

@@ -72,7 +72,7 @@ public class parking_slot extends JFrame implements ActionListener{
 			con.add(photo);
 			 photo.setBounds(10,10,100,100);
 			 
-			 title = new JLabel ("Manalad Group of Company");
+			 title = new JLabel ("Archim's TechCorner");
 			 title.setBounds(100,-10,200,100);
 			 con.add(title);
 		

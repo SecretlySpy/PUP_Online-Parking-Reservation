@@ -1,183 +1,185 @@
 package adminmanagement;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
+import DatabaseConnection.ConnectionDB;
 
-public class customer_profile extends JFrame implements ActionListener{
-	private JLabel id;
-	private JTextField tid;
-	private JTextArea table;
-	private JLabel cusprof;
-	public JButton logout, menu1, search, reset;
-	private JLabel title;
-	
-	Font f1 = new Font("Times New Roman", Font.BOLD,17);
-	Font f2 = new Font("Arial", Font.ITALIC,13);
-	Font f3 = new Font("Times New Roman", Font.PLAIN,15);
-	
-	Color c1 = Color.GRAY;
-	Color c2 = Color.WHITE;
-	Color c3 = Color.BLACK;
-	
-	private ImageIcon icon;
-	private JLabel label;
-	private JLabel photo;
-	private JLabel lblClock;
-	
-	public void Clock() {
-		Thread clock = new Thread() {
-			@Override
-			public void run() {
-				try {
-					while (true) {
-						Calendar cal = new GregorianCalendar();
-						int day = cal.get(Calendar.DAY_OF_MONTH);
-						int month = cal.get(Calendar.MONTH);
-						int year = cal.get(Calendar.YEAR);
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.table.DefaultTableModel;
+import java.awt.Container;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
-						int second = cal.get(Calendar.SECOND);
-						int minute = cal.get(Calendar.MINUTE);
-						int hour = cal.get(Calendar.HOUR);
+public class customer_profile extends JFrame implements ActionListener {
+	private JTextField searchText;
+	private JTable table;
+	private JButton logout, menu1, search, reset;
+	private Connection conn;
 
-						lblClock.setText("Time " + hour + " : " + minute + " : " + second + " Date " + year + " / "
-								+ (month + 1) + " / " + day);
-						sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		};
-		clock.start();
-	}	
-	
-	public customer_profile () {
-		
-		icon = new ImageIcon("src/m.jpg");
-		
+	private final Font f1 = new Font("Times New Roman", Font.BOLD, 17);
+	private final Font f3 = new Font("Times New Roman", Font.PLAIN, 15);
+
+	public customer_profile() {
+		conn = ConnectionDB.getConnection();
+
 		Container con = getContentPane();
 		con.setLayout(null);
-		
-		photo = new JLabel() {
-			  public void paintComponent(Graphics g) {
-			    g.drawImage(icon.getImage(), 0, 0, null);
-			    super.paintComponent(g);
-			  }
-			};
-			
-			photo.setOpaque(false);
-			con.add(photo);
-			 photo.setBounds(10,10,100,100);
-			 
-			 title = new JLabel ("Manalad Group of Company");
-			 title.setBounds(100,-10,200,100);
-			 con.add(title);
-		
-			con.add(lblClock = new JLabel(""));
-			lblClock.setBounds(450,10,300,120);
-			lblClock.setFont(f3);
-		
-			logout = new JButton("Logout");
-			logout.addActionListener(this);
-			logout.setBounds(580,10,100,40);
-			con.add(logout);
-			
-			search = new JButton("Search");
-			search.addActionListener(this);
-			search.setBounds(50,200,80,30);
-			con.add(search);
-			
-			reset = new JButton("Reset");
-			reset.addActionListener(this);
-			reset.setBounds(160,200,80,30);
-			con.add(reset);
-			
-			menu1 = new JButton ("Back to Menu");
-			menu1.addActionListener(this);
-			menu1.setBounds(430,10,130,40);
-			con.add(menu1);
-			
-			id = new JLabel ("ID # :");
-			id.setFont(f1);
-			id.setBounds(40,170,60,20);
-			con.add(id);
-			
-			tid = new JTextField ();
-			tid.setFont(f3);
-			tid.setBounds(100,170,150,20);
-			con.add(tid);
-			
-			table = new JTextArea ();
-			table.setFont(f3);
-			table.setBounds(340,170,300,350);
-			con.add(table);
-			
-			cusprof = new JLabel ("-------------------------------------------CUSTOMER PROFILE--------------------------------------");
-			cusprof.setFont(f1);
-			cusprof.setBounds(10,100,750,50);
-			con.add(cusprof);
 
-			Clock();
+		JLabel title = new JLabel("Archim's TechCorner");
+		title.setBounds(20, 10, 200, 40);
+		con.add(title);
+
+		logout = new JButton("Logout");
+		logout.addActionListener(this);
+		logout.setBounds(850, 10, 100, 35);
+		con.add(logout);
+
+		menu1 = new JButton("Back to Menu");
+		menu1.addActionListener(this);
+		menu1.setBounds(700, 10, 130, 35);
+		con.add(menu1);
+
+		JLabel cusprof = new JLabel("-------------------------------------------CUSTOMER PROFILE--------------------------------------");
+		cusprof.setFont(f1);
+		cusprof.setBounds(10, 60, 950, 40);
+		con.add(cusprof);
+
+		JLabel searchLabel = new JLabel("Search:");
+		searchLabel.setFont(f3);
+		searchLabel.setBounds(40, 115, 70, 25);
+		con.add(searchLabel);
+
+		searchText = new JTextField();
+		searchText.setFont(f3);
+		searchText.setBounds(110, 115, 260, 25);
+		con.add(searchText);
+
+		search = new JButton("Search");
+		search.addActionListener(this);
+		search.setBounds(390, 112, 90, 30);
+		con.add(search);
+
+		reset = new JButton("Reset");
+		reset.addActionListener(this);
+		reset.setBounds(500, 112, 90, 30);
+		con.add(reset);
+
+		table = new JTable();
+		table.setRowHeight(26);
+		JScrollPane scrollPane = new JScrollPane(table);
+		scrollPane.setBounds(20, 160, 930, 380);
+		con.add(scrollPane);
+
+		loadCustomers(null);
 	}
-	
+
+	private void loadCustomers(String filter) {
+		DefaultTableModel model = new DefaultTableModel();
+		model.addColumn("First Name");
+		model.addColumn("Middle Name");
+		model.addColumn("Last Name");
+		model.addColumn("Email");
+		model.addColumn("Gender");
+		model.addColumn("Birthdate");
+		model.addColumn("Occupation");
+		model.addColumn("Address");
+		model.addColumn("Mobile #");
+		model.addColumn("Username");
+		model.addColumn("Plate #");
+		model.addColumn("Brand");
+		model.addColumn("Color");
+		model.addColumn("Type");
+
+		if (conn == null) {
+			table.setModel(model);
+			JOptionPane.showMessageDialog(this, "Database connection is not available.");
+			return;
+		}
+
+		try {
+			String sql = "select FirstName,MiddleName,LastName,Email,Gender,Birthdate,Occupation,Address,"
+					+ "MobileNumber,Username,PlateNumber,Brand,Color,Type from useraccount";
+			boolean hasFilter = filter != null && !filter.trim().isEmpty();
+			if (hasFilter) {
+				sql += " where Username like ? or FirstName like ? or MiddleName like ? or LastName like ? or Email like ?";
+			}
+
+			PreparedStatement ps = conn.prepareStatement(sql);
+			if (hasFilter) {
+				String searchValue = "%" + filter.trim() + "%";
+				for (int i = 1; i <= 5; i++) {
+					ps.setString(i, searchValue);
+				}
+			}
+
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) {
+				model.addRow(new Object[] { rs.getString("FirstName"), rs.getString("MiddleName"),
+						rs.getString("LastName"), rs.getString("Email"), rs.getString("Gender"),
+						rs.getString("Birthdate"), rs.getString("Occupation"), rs.getString("Address"),
+						rs.getString("MobileNumber"), rs.getString("Username"), rs.getString("PlateNumber"),
+						rs.getString("Brand"), rs.getString("Color"), rs.getString("Type") });
+			}
+			rs.close();
+			ps.close();
+			table.setModel(model);
+		} catch (Exception ex) {
+			table.setModel(model);
+			JOptionPane.showMessageDialog(this, "Unable to load customer profiles: " + ex.getMessage());
+		}
+	}
+
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
-		 //Reset Button
-	    if (e.getSource() == reset) {
-	        tid.setText("");
-	    }
-		
-	    //pag logout
-	    if (e.getSource() == logout) {
+		if (e.getSource() == search) {
+			loadCustomers(searchText.getText());
+			return;
+		}
+
+		if (e.getSource() == reset) {
+			searchText.setText("");
+			loadCustomers(null);
+			return;
+		}
+
+		if (e.getSource() == logout) {
 			int dialog = JOptionPane.showConfirmDialog(null, "Are you sure you want to LOGOUT?", "WARNING",
 					JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 			if (dialog == JOptionPane.YES_OPTION) {
-				 //pabalik ng login
-				        login app = new login();
-				        app.setTitle("Admin Login");
-				        app.setVisible(true);
-				        app.setSize(450,600); 
-				        app.setVisible(true);
-				    	app.setLocationRelativeTo(null);
-				    	customer_profile.this.dispose();
-				     
+				login app = new login();
+				app.setTitle("Admin Login");
+				app.setVisible(true);
+				app.setSize(450, 600);
+				app.setLocationRelativeTo(null);
+				dispose();
 			}
-			if (dialog == JOptionPane.NO_OPTION) {
-				customer_profile.this.show();
-			}
+			return;
 		}
-		
-	    
-	    //pagbalik sa menu
-	    if (e.getSource() == menu1) {
-	    	//menu
-	    	  menu app = new menu();
-		        app.setTitle("Admin Menu");
-		        app.setVisible(true);
-		        app.setSize(1000,400); 
-		        app.setVisible(true);
-		    	app.setLocationRelativeTo(null);
-		    	customer_profile.this.dispose();
-	    }
-	    
-		
+
+		if (e.getSource() == menu1) {
+			menu app = new menu();
+			app.setTitle("Admin Menu");
+			app.setVisible(true);
+			app.setSize(1000, 400);
+			app.setLocationRelativeTo(null);
+			dispose();
+		}
 	}
-	
-	
-	static customer_profile app = new customer_profile();
+
 	public static void main(String[] args) {
+		customer_profile app = new customer_profile();
 		app.setTitle("Customer Profile");
-		app.setSize(700, 600);
+		app.setSize(1000, 600);
 		app.setVisible(true);
 		app.setLocationRelativeTo(null);
 		app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
-		
 	}
-
-	
 }

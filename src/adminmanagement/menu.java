@@ -111,7 +111,7 @@ public void actionPerformed(ActionEvent e) {
 		if (e.getSource() == user) {
 			customer_profile app = new customer_profile();
 			app.setTitle("Customer Profile");
-			app.setSize(700, 600);
+			app.setSize(1000, 600);
 			app.setVisible(true);
 			app.setLocationRelativeTo(null);
 			menu.this.dispose();
