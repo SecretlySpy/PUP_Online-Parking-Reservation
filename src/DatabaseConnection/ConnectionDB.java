@@ -1,17 +1,24 @@
 
 package DatabaseConnection;
-import java.sql.*;
+
+import app.AppConfig;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+
+/**
+ * Opens MySQL connections for the application screens.
+ */
 public class ConnectionDB {
-static String driver = "com.mysql.cj.jdbc.Driver";
-static String url ="jdbc:mysql://localhost:3306/onlineparkingreservation";
-static String username = "root";
-static String password = "kakashijirachisohaer";
-public static Connection getConnection(){
- Connection conn=null;
- try{
- Class.forName(driver);
- conn=DriverManager.getConnection(url,username,password);
- }catch(Exception er){System.out.println(er);}
- return conn;
-}
+	private static final String DRIVER = "com.mysql.cj.jdbc.Driver";
+
+	public static Connection getConnection() {
+		try {
+			Class.forName(DRIVER);
+			return DriverManager.getConnection(AppConfig.dbUrl(), AppConfig.dbUser(), AppConfig.dbPassword());
+		} catch (Exception error) {
+			System.err.println("Database connection failed: " + error.getMessage());
+			return null;
+		}
+	}
 }

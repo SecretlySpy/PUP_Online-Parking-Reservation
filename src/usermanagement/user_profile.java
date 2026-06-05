@@ -1,24 +1,33 @@
 package usermanagement;
 
 import DatabaseConnection.ConnectionDB;
+import app.AppTheme;
 
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.table.DefaultTableModel;
-import java.awt.Container;
-import java.awt.Font;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableModel;
+
+/**
+ * Displays the signed-in customer's personal account fields.
+ */
 public class user_profile extends JFrame implements ActionListener {
 	private JTable table;
-	private JButton back, logout;
+	private JButton backButton;
+	private JButton logoutButton;
+	private JLabel statusLabel;
 	private String username;
 	private Connection conn;
 
@@ -27,105 +36,119 @@ public class user_profile extends JFrame implements ActionListener {
 	}
 
 	public user_profile(String username) {
+		AppTheme.install();
 		this.username = username;
 		conn = ConnectionDB.getConnection();
-
-		Container con = getContentPane();
-		con.setLayout(null);
-
-		table = new JTable();
-		table.setRowHeight(28);
-		table.setFont(new Font("Arial", Font.PLAIN, 13));
-		JScrollPane scrollPane = new JScrollPane(table);
-		scrollPane.setBounds(20, 80, 840, 360);
-		con.add(scrollPane);
-
-		back = new JButton("Back to Menu");
-		back.setBounds(20, 20, 140, 35);
-		back.addActionListener(this);
-		con.add(back);
-
-		logout = new JButton("Logout");
-		logout.setBounds(720, 20, 140, 35);
-		logout.addActionListener(this);
-		con.add(logout);
-
+		setContentPane(AppTheme.shell("Customer Profile", "Review your account information.", buildContent()));
 		loadProfile();
 	}
 
+	private JPanel buildContent() {
+		JPanel content = AppTheme.card();
+		content.setLayout(new BorderLayout(0, 16));
+		content.add(buildToolbar(), BorderLayout.NORTH);
+		content.add(buildTable(), BorderLayout.CENTER);
+		content.add(buildStatus(), BorderLayout.SOUTH);
+		return content;
+	}
+
+	private JPanel buildToolbar() {
+		JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+		toolbar.setOpaque(false);
+
+		backButton = AppTheme.secondaryButton("Back to Menu");
+		logoutButton = AppTheme.dangerButton("Logout");
+
+		backButton.addActionListener(this);
+		logoutButton.addActionListener(this);
+
+		toolbar.add(backButton);
+		toolbar.add(logoutButton);
+		return toolbar;
+	}
+
+	private JScrollPane buildTable() {
+		table = new JTable();
+		AppTheme.styleResponsiveTable(table);
+		return new JScrollPane(table);
+	}
+
+	private JLabel buildStatus() {
+		statusLabel = AppTheme.label("Loading profile...");
+		statusLabel.setForeground(AppTheme.MUTED_TEXT);
+		return statusLabel;
+	}
+
 	private void loadProfile() {
-		DefaultTableModel model = new DefaultTableModel();
-		model.addColumn("First Name");
-		model.addColumn("Middle Name");
-		model.addColumn("Last Name");
-		model.addColumn("Email");
-		model.addColumn("Gender");
-		model.addColumn("Birthdate");
-		model.addColumn("Occupation");
-		model.addColumn("Address");
-		model.addColumn("Mobile #");
-		model.addColumn("Username");
+		DefaultTableModel model = new DefaultTableModel(columnNames(), 0) {
+			@Override
+			public boolean isCellEditable(int row, int column) {
+				return false;
+			}
+		};
 
 		if (conn == null) {
 			table.setModel(model);
-			JOptionPane.showMessageDialog(this, "Database connection is not available.");
+			statusLabel.setText("Database connection is not available.");
 			return;
 		}
 
-		try {
-			String sql = "select FirstName,MiddleName,LastName,Email,Gender,Birthdate,Occupation,Address,MobileNumber,Username "
-					+ "from useraccount";
-			if (username != null && !username.trim().isEmpty()) {
-				sql += " where Username=?";
+		String sql = "select FirstName,MiddleName,LastName,Email,Gender,Birthdate,Occupation,Address,MobileNumber,Username "
+				+ "from useraccount";
+		boolean hasUserFilter = username != null && !username.trim().isEmpty();
+		if (hasUserFilter) {
+			sql += " where Username=?";
+		}
+
+		try (PreparedStatement statement = conn.prepareStatement(sql)) {
+			if (hasUserFilter) {
+				statement.setString(1, username);
 			}
-			PreparedStatement ps = conn.prepareStatement(sql);
-			if (username != null && !username.trim().isEmpty()) {
-				ps.setString(1, username);
+
+			try (ResultSet resultSet = statement.executeQuery()) {
+				int rows = 0;
+				while (resultSet.next()) {
+					model.addRow(new Object[] { resultSet.getString("FirstName"), resultSet.getString("MiddleName"),
+							resultSet.getString("LastName"), resultSet.getString("Email"), resultSet.getString("Gender"),
+							resultSet.getString("Birthdate"), resultSet.getString("Occupation"),
+							resultSet.getString("Address"), resultSet.getString("MobileNumber"),
+							resultSet.getString("Username") });
+					rows++;
+				}
+				table.setModel(model);
+				statusLabel.setText(rows + " profile record(s) loaded.");
 			}
-			ResultSet rs = ps.executeQuery();
-			while (rs.next()) {
-				model.addRow(new Object[] { rs.getString("FirstName"), rs.getString("MiddleName"),
-						rs.getString("LastName"), rs.getString("Email"), rs.getString("Gender"),
-						rs.getString("Birthdate"), rs.getString("Occupation"), rs.getString("Address"),
-						rs.getString("MobileNumber"), rs.getString("Username") });
-			}
-			rs.close();
-			ps.close();
+		} catch (Exception error) {
 			table.setModel(model);
-		} catch (Exception ex) {
-			table.setModel(model);
-			JOptionPane.showMessageDialog(this, "Unable to load profile: " + ex.getMessage());
+			AppTheme.showError(this, "Unable to load profile.", error);
+			statusLabel.setText("Unable to load profile.");
 		}
 	}
 
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		if (e.getSource() == back) {
-			menu app = new menu(username);
-			app.setTitle("User Menu");
-			app.setSize(1000, 400);
-			app.setVisible(true);
-			app.setLocationRelativeTo(null);
-			dispose();
-			return;
-		}
+	private String[] columnNames() {
+		return new String[] { "First Name", "Middle Name", "Last Name", "Email", "Gender", "Birthdate",
+				"Occupation", "Address", "Mobile #", "Username" };
+	}
 
-		if (e.getSource() == logout) {
+	@Override
+	public void actionPerformed(ActionEvent event) {
+		Object source = event.getSource();
+		if (source == backButton) {
+			menu app = new menu(username);
+			AppTheme.showFrame(app, "User Menu", 980, 540);
+			dispose();
+		} else if (source == logoutButton) {
 			login app = new login();
-			app.setTitle("User Login");
-			app.setSize(450, 600);
-			app.setVisible(true);
-			app.setLocationRelativeTo(null);
+			AppTheme.showFrame(app, "User Login", 520, 620);
 			dispose();
 		}
 	}
 
 	public static void main(String[] args) {
-		user_profile app = new user_profile();
-		app.setTitle("Customer Profile");
-		app.setSize(900, 600);
-		app.setVisible(true);
-		app.setLocationRelativeTo(null);
-		app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		SwingUtilities.invokeLater(() -> {
+			user_profile app = new user_profile();
+			app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			AppTheme.showFrame(app, "Customer Profile", 980, 620);
+		});
 	}
 }

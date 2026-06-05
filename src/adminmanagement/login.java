@@ -1,249 +1,203 @@
 package adminmanagement;
 
 import DatabaseConnection.ConnectionDB;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import app.AppTheme;
+import app.SessionContext;
+import app.UserRole;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
+import java.awt.BorderLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
 
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
+/**
+ * Administrator login screen for parking operations.
+ */
 public class login extends JFrame implements ActionListener {
-	
-	public JLabel unam, pas, lblClock, photo;
-	public JTextField t1;
-	public char getpass[];
-	public String pass;
-
-	public JButton login, res, reg1;
-	public JCheckBox show;
-	public JPasswordField  pfpwd;
-	public Connection conn = null;
-	public Statement st = null;
-	public PreparedStatement ps = null;
-	public ResultSet rs = null;
-	public DefaultTableModel dm = null;
-	public ResultSetMetaData rsmd = null;
-	Font f1 = new Font("Times New Roman", Font.BOLD, 17);
-	Font f2 = new Font("Arial", Font.ITALIC, 13);
-	Font f3 = new Font("Times New Roman", Font.PLAIN, 15);
-
-	Color c1 = Color.GRAY;
-	Color c2 = Color.WHITE;
-	Color c3 = Color.BLACK;
-
-	private ImageIcon icon;
-	private JLabel label;
-
-	public void Clock() {
-		Thread clock = new Thread() {
-			@Override
-			public void run() {
-				try {
-					while (true) {
-						Calendar cal = new GregorianCalendar();
-						int day = cal.get(Calendar.DAY_OF_MONTH);
-						int month = cal.get(Calendar.MONTH);
-						int year = cal.get(Calendar.YEAR);
-
-						int second = cal.get(Calendar.SECOND);
-						int minute = cal.get(Calendar.MINUTE);
-						int hour = cal.get(Calendar.HOUR);
-
-						lblClock.setText("Time " + hour + " : " + minute + " : " + second + " Date " + year + " / "
-								+ (month + 1) + " / " + day);
-						sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		};
-		clock.start();
-	}
+	private JTextField usernameField;
+	private JPasswordField passwordField;
+	private JButton loginButton;
+	private JButton resetButton;
+	private JButton registerButton;
+	private JCheckBox showPasswordBox;
+	private JLabel statusLabel;
+	private Connection conn;
 
 	public login() {
+		AppTheme.install();
 		conn = ConnectionDB.getConnection();
-		icon = new ImageIcon("src/m.jpg");
+		setContentPane(AppTheme.shell("Admin Console", "Sign in to manage customers, inventory, slots, and billing.",
+				buildContent()));
+	}
 
-		Container con = getContentPane();
-		con.setLayout(null);
+	private JPanel buildContent() {
+		JPanel card = AppTheme.card();
+		card.setLayout(new BorderLayout(0, 18));
+		card.add(buildHeaderRow(), BorderLayout.NORTH);
+		card.add(buildForm(), BorderLayout.CENTER);
+		card.add(buildActions(), BorderLayout.SOUTH);
+		return card;
+	}
 
-		photo = new JLabel() {
-			public void paintComponent(Graphics g) {
-				g.drawImage(icon.getImage(), 0, 0, null);
-				super.paintComponent(g);
+	private JPanel buildHeaderRow() {
+		JPanel header = new JPanel(new BorderLayout());
+		header.setOpaque(false);
+		header.add(AppTheme.sectionLabel("Administrator Login"), BorderLayout.WEST);
+		header.add(AppTheme.clockLabel(), BorderLayout.EAST);
+		return header;
+	}
 
-			}
-		};
+	private JPanel buildForm() {
+		JPanel form = new JPanel(new GridBagLayout());
+		form.setOpaque(false);
 
-		photo.setOpaque(false);
-		con.add(photo);
-		photo.setBounds(200, 60, 150, 100);
+		JLabel usernameLabel = AppTheme.label("Username");
+		usernameField = AppTheme.textField("Admin username");
+		usernameLabel.setLabelFor(usernameField);
 
-		con.add(lblClock = new JLabel(""));
-		lblClock.setBounds(200, 10, 230, 30);
-		lblClock.setFont(f3);
+		JLabel passwordLabel = AppTheme.label("Password");
+		passwordField = AppTheme.passwordField("Admin password");
+		passwordLabel.setLabelFor(passwordField);
 
-		unam = new JLabel("User Name");
-		pas = new JLabel("Password");
+		showPasswordBox = new JCheckBox("Show password");
+		showPasswordBox.setOpaque(false);
+		showPasswordBox.addActionListener(this);
 
-		t1 = new JTextField();
-		 pfpwd = new JPasswordField();
+		statusLabel = AppTheme.label("Use an administrator account.");
+		statusLabel.setForeground(AppTheme.MUTED_TEXT);
 
-		login = new JButton("Login");
-		show = new JCheckBox("Show Password");
-		res = new JButton("Reset");
-		reg1 = new JButton("Register!");
+		GridBagConstraints usernameLabelConstraints = AppTheme.constraints(0, 0);
+		usernameLabelConstraints.insets.set(8, 0, 4, 0);
+		form.add(usernameLabel, usernameLabelConstraints);
 
-		login.addActionListener(this);
-		show.addActionListener(this);
-		res.addActionListener(this);
-		reg1.addActionListener(this);
+		GridBagConstraints usernameConstraints = AppTheme.constraints(0, 1);
+		usernameConstraints.insets.set(0, 0, 12, 0);
+		form.add(usernameField, usernameConstraints);
 
-		unam.setBounds(50, 150, 100, 20);
-		pas.setBounds(50, 220, 100, 20);
-		t1.setBounds(150, 150, 200, 20);
-		 pfpwd.setBounds(150, 220, 200, 20);
-		show.setBounds(150, 250, 150, 20);
-		login.setBounds(50, 300, 150, 20);
-		res.setBounds(200, 300, 150, 20);
-		reg1.setBounds(125, 350, 150, 20);
+		GridBagConstraints passwordLabelConstraints = AppTheme.constraints(0, 2);
+		passwordLabelConstraints.insets.set(8, 0, 4, 0);
+		form.add(passwordLabel, passwordLabelConstraints);
 
-		unam.setFont(f1);
-		pas.setFont(f1);
-		t1.setFont(f1);
-		 pfpwd.setFont(f1);
+		GridBagConstraints passwordConstraints = AppTheme.constraints(0, 3);
+		passwordConstraints.insets.set(0, 0, 8, 0);
+		form.add(passwordField, passwordConstraints);
 
-		login.setFont(f2);
-		res.setFont(f2);
-		show.setFont(f2);
-		reg1.setFont(f2);
+		GridBagConstraints showConstraints = AppTheme.constraints(0, 4);
+		showConstraints.insets.set(0, 0, 8, 0);
+		form.add(showPasswordBox, showConstraints);
 
-		unam.setForeground(c3);
-		pas.setForeground(c3);
-		t1.setForeground(c3);
-		 pfpwd.setForeground(c3);
+		GridBagConstraints statusConstraints = AppTheme.constraints(0, 5);
+		statusConstraints.insets.set(6, 0, 0, 0);
+		form.add(statusLabel, statusConstraints);
 
-		login.setForeground(c3);
-		res.setForeground(c3);
-		show.setForeground(c3);
-		reg1.setForeground(c3);
+		return form;
+	}
 
-		con.add(unam);
-		con.add(pas);
-		con.add(t1);
-		con.add(pfpwd);
+	private JPanel buildActions() {
+		JPanel actions = new JPanel(new GridBagLayout());
+		actions.setOpaque(false);
+		actions.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
 
-		con.add(login);
-		con.add(res);
-		con.add(show);
-		con.add(reg1);
+		loginButton = AppTheme.primaryButton("Login");
+		resetButton = AppTheme.secondaryButton("Reset");
+		registerButton = AppTheme.secondaryButton("Register Admin");
 
-		Clock();
+		loginButton.addActionListener(this);
+		resetButton.addActionListener(this);
+		registerButton.addActionListener(this);
+
+		actions.add(loginButton, AppTheme.constraints(0, 0));
+		actions.add(resetButton, AppTheme.constraints(1, 0));
+
+		GridBagConstraints registerConstraints = AppTheme.constraints(0, 1);
+		registerConstraints.gridwidth = 2;
+		actions.add(registerButton, registerConstraints);
+
+		return actions;
 	}
 
 	@Override
-	public void actionPerformed(ActionEvent e) {
-		
-		getpass = pfpwd.getPassword();
-		pass = String.valueOf(getpass);
-		// reg button papuntang regform
-
-		if (e.getSource() == reg1) {
+	public void actionPerformed(ActionEvent event) {
+		Object source = event.getSource();
+		if (source == registerButton) {
 			reg app = new reg();
-			app.setTitle("Admin Registration Form");
-			app.setVisible(true);
-			app.setSize(1300, 450);
-			app.setLocationRelativeTo(null);
-			login.this.dispose();
+			AppTheme.showFrame(app, "Admin Registration Form", 1100, 560);
+			dispose();
+		} else if (source == loginButton) {
+			loginAdmin();
+		} else if (source == resetButton) {
+			resetForm();
+		} else if (source == showPasswordBox) {
+			passwordField.setEchoChar(showPasswordBox.isSelected() ? (char) 0 : '*');
 		}
-		if (e.getSource() == login) {
-		// Login Button
-		
-			getpass = pfpwd.getPassword();
-			pass = String.valueOf(getpass);
-			
-		
-				try {
-				String sql = "select * from adminaccount where Username=? and Password=?";
-					ps = conn.prepareStatement(sql);
-					ps.setString(1, t1.getText());
-					ps.setString(2, pass);
-					rs = ps.executeQuery();
-					int count = 0;
-					while (rs.next()) {
-						count = count + 1;
-					}
-					if (count == 1) {
-						JOptionPane.showMessageDialog(null, "UserName and Password is correct");
-						JOptionPane.showMessageDialog(this, "Login Successful");
-						// login button punta ng home/menu
-						login.addActionListener(new ActionListener() {
-							public void actionPerformed(ActionEvent evt) {
-								menu app = new menu();
-								app.setTitle("Admin Menu");
-								app.setVisible(true);
-								app.setSize(1000, 400);
-								app.setLocationRelativeTo(null);
-								login.this.dispose();
-							}
-						});
-					} else if (count > 1) {
-						JOptionPane.showMessageDialog(null, "Duplicate UserName and Password");
-					} else {
-						JOptionPane.showMessageDialog(null, "UserName and Password is not correct Try Again...");
-
-						JOptionPane.showMessageDialog(this, "Invalid Username or Password");
-						t1.setText("");
-						pfpwd.setText("");
-					}
-					
-					rs.close();
-					ps.close();
-				} catch (Exception ex) {
-					JOptionPane.showMessageDialog(null, ex);
-				}
-		
-			
-			
-				
-				
-		}
-
-	
-		
-		// Reset Button
-		if (e.getSource() == res) {
-			t1.setText("");
-			pfpwd.setText("");
-		}
-		// Show Password
-		if (e.getSource() == show) {
-			if (show.isSelected()) {
-				pfpwd.setEchoChar((char) 0);
-			} else {
-				pfpwd.setEchoChar('*');
-			}
-
-		}
-
 	}
 
-	static login app = new login();
+	private void resetForm() {
+		usernameField.setText("");
+		passwordField.setText("");
+		statusLabel.setText("Use an administrator account.");
+		usernameField.requestFocusInWindow();
+	}
+
+	private void loginAdmin() {
+		if (conn == null) {
+			AppTheme.showError(this, "Database connection is not available. Check the MySQL container or local service.",
+					null);
+			return;
+		}
+
+		String username = usernameField.getText().trim();
+		String password = new String(passwordField.getPassword());
+		if (username.isEmpty() || password.isEmpty()) {
+			statusLabel.setText("Enter both username and password.");
+			return;
+		}
+
+		String sql = "select Username from adminaccount where Username=? and Password=?";
+		try (PreparedStatement statement = conn.prepareStatement(sql)) {
+			statement.setString(1, username);
+			statement.setString(2, password);
+			try (ResultSet resultSet = statement.executeQuery()) {
+				if (resultSet.next()) {
+					openMenu();
+				} else {
+					statusLabel.setText("Invalid admin username or password.");
+					passwordField.setText("");
+				}
+			}
+		} catch (Exception error) {
+			AppTheme.showError(this, "Unable to log in.", error);
+		}
+	}
+
+	private void openMenu() {
+		SessionContext.signIn(usernameField.getText().trim(), UserRole.ADMIN);
+		JOptionPane.showMessageDialog(this, "Login successful.");
+		menu app = new menu();
+		AppTheme.showFrame(app, "Admin Menu", 1060, 600);
+		dispose();
+	}
 
 	public static void main(String[] args) {
-		app.setTitle("Admin Login");
-		app.setSize(450, 600);
-		app.setVisible(true);
-		app.setLocationRelativeTo(null);
-		app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
+		SwingUtilities.invokeLater(() -> {
+			login app = new login();
+			app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			AppTheme.showFrame(app, "Admin Login", 540, 640);
+		});
 	}
 }

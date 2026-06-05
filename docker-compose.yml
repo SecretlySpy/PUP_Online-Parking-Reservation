@@ -1,0 +1,43 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${OPR_DB_NAME:-onlineparkingreservation}
+      MYSQL_ROOT_PASSWORD: ${OPR_DB_PASSWORD:-kakashijirachisohaer}
+    ports:
+      - "${OPR_DB_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/01-import.sh:/docker-entrypoint-initdb.d/01-import.sh:ro
+      - ./Online Parking Reservation Database:/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+
+  app:
+    build: .
+    profiles: ["gui"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      OPR_DB_HOST: db
+      OPR_DB_PORT: 3306
+      OPR_DB_NAME: ${OPR_DB_NAME:-onlineparkingreservation}
+      OPR_DB_USER: root
+      OPR_DB_PASSWORD: ${OPR_DB_PASSWORD:-kakashijirachisohaer}
+
+volumes:
+  mysql-data:

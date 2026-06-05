@@ -1,381 +1,302 @@
 package adminmanagement;
 
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import DatabaseConnection.ConnectionDB;
-import java.awt.*;
-import java.awt.event.*;
+import app.AppOptions;
+import app.AppTheme;
+
+import java.awt.BorderLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
 
+import javax.swing.ButtonGroup;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JRadioButton;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
+/**
+ * Registration screen for administrator accounts.
+ */
 public class reg extends JFrame implements ActionListener {
-	String tpass1, trpass2;
-	public char pass1[], pass2[];
-	public JLabel admindet, fnam, mnam, lnam, bdate, mno, email, gender, unam, pass, rpass;
-	public JTextField tfnam, tmnam, tlnam, tmno, temail, tunam;
-	public JRadioButton male, female;
-	public ButtonGroup gengp;
-	public JComboBox<?> date, month, year;
-	public JPasswordField tpass, trpass;
-	public JButton sub, reset1;
-	public JTextArea tout;
-	public Connection conn = null;
-	public Statement st = null;
-	public PreparedStatement ps = null;
-	public ResultSet rs = null;
-	public DefaultTableModel dm = null;
-	public ResultSetMetaData rsmd = null;
-	Font f1 = new Font("Times New Roman", Font.PLAIN, 15);
-	Font f2 = new Font("Times New Roman", Font.BOLD, 20);
-	Font f3 = new Font("Times New Roman", Font.PLAIN, 13);
-	Font f4 = new Font("Times New Roman", Font.CENTER_BASELINE, 15);
-	// Color c1 = new Color.
-
-	private JLabel lblClock;
-	private ImageIcon icon;
-	private JLabel label;
-	private JLabel photo;
-	private JLabel title;
-	private JCheckBox term;
-	private JLabel cnum;
-
-	public void Clock() {
-		Thread clock = new Thread() {
-			@Override
-			public void run() {
-				try {
-					while (true) {
-						Calendar cal = new GregorianCalendar();
-						int day = cal.get(Calendar.DAY_OF_MONTH);
-						int month = cal.get(Calendar.MONTH);
-						int year = cal.get(Calendar.YEAR);
-
-						int second = cal.get(Calendar.SECOND);
-						int minute = cal.get(Calendar.MINUTE);
-						int hour = cal.get(Calendar.HOUR);
-
-						lblClock.setText("Time " + hour + " : " + minute + " : " + second + " Date " + year + " / "
-								+ (month + 1) + " / " + day);
-						sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		};
-		clock.start();
-	}
+	private JTextField firstNameField;
+	private JTextField middleNameField;
+	private JTextField lastNameField;
+	private JTextField mobileField;
+	private JTextField emailField;
+	private JTextField usernameField;
+	private JPasswordField passwordField;
+	private JPasswordField repeatPasswordField;
+	private JRadioButton maleButton;
+	private JRadioButton femaleButton;
+	private ButtonGroup genderGroup;
+	private JComboBox<String> dayBox;
+	private JComboBox<String> monthBox;
+	private JComboBox<String> yearBox;
+	private JCheckBox termsBox;
+	private JButton submitButton;
+	private JButton resetButton;
+	private JButton backButton;
+	private JTextArea summaryArea;
+	private Connection conn;
 
 	public reg() {
+		AppTheme.install();
 		conn = ConnectionDB.getConnection();
-		icon = new ImageIcon("src/m.jpg");
-		
-		Container con = getContentPane();
-		con.setLayout(null);
+		setContentPane(AppTheme.shell("Admin Registration", "Create a new administrator account.", buildContent()));
+	}
 
-		photo = new JLabel() {
-			public void paintComponent(Graphics g) {
-				g.drawImage(icon.getImage(), 0, 0, null);
-				super.paintComponent(g);
-			}
-		};
+	private JPanel buildContent() {
+		JPanel content = AppTheme.card();
+		content.setLayout(new BorderLayout(18, 0));
+		content.add(buildForm(), BorderLayout.CENTER);
+		content.add(buildSummary(), BorderLayout.EAST);
+		return content;
+	}
 
-		photo.setOpaque(false);
-		con.add(photo);
-		photo.setBounds(10, 10, 100, 100);
+	private JPanel buildForm() {
+		JPanel form = new JPanel(new GridBagLayout());
+		form.setOpaque(false);
 
-		con.add(lblClock = new JLabel(""));
-		lblClock.setBounds(1100, 10, 230, 30);
-		lblClock.setFont(f3);
+		firstNameField = addField(form, "First Name", 0);
+		middleNameField = addField(form, "Middle Name", 1);
+		lastNameField = addField(form, "Last Name", 2);
+		emailField = addField(form, "Email", 3);
+		mobileField = addField(form, "Mobile Number", 4);
+		usernameField = addField(form, "Username", 5);
+		passwordField = addPasswordField(form, "Password", 6);
+		repeatPasswordField = addPasswordField(form, "Repeat Password", 7);
+		addGenderRow(form, 8);
+		addBirthdateRow(form, 9);
+		addTermsRow(form, 10);
+		addActions(form, 11);
 
-		title = new JLabel("Archim's TechCorner");
-		title.setBounds(100, -10, 200, 100);
-		con.add(title);
+		return form;
+	}
 
-		admindet = new JLabel(
-				"------------------------------------------------------------------------------ADMIN PROFILE--------------------------------------------------------------------------------");
-		admindet.setBounds(10, 60, 1300, 50);
-		admindet.setFont(f2);
-		con.add(admindet);
+	private JTextField addField(JPanel form, String labelText, int row) {
+		JLabel label = AppTheme.label(labelText);
+		JTextField field = AppTheme.textField(labelText);
+		label.setLabelFor(field);
+		form.add(label, labelConstraints(row));
+		form.add(field, fieldConstraints(row));
+		return field;
+	}
 
-		fnam = new JLabel("First Name:");
-		fnam.setBounds(40, 110, 80, 30);
-		fnam.setFont(f1);
-		con.add(fnam);
+	private JPasswordField addPasswordField(JPanel form, String labelText, int row) {
+		JLabel label = AppTheme.label(labelText);
+		JPasswordField field = AppTheme.passwordField(labelText);
+		label.setLabelFor(field);
+		form.add(label, labelConstraints(row));
+		form.add(field, fieldConstraints(row));
+		return field;
+	}
 
-		mnam = new JLabel("Middle Name:");
-		mnam.setBounds(40, 150, 90, 30);
-		mnam.setFont(f1);
-		con.add(mnam);
+	private void addGenderRow(JPanel form, int row) {
+		form.add(AppTheme.label("Gender"), labelConstraints(row));
 
-		lnam = new JLabel("Last Name:");
-		lnam.setBounds(40, 190, 80, 30);
-		lnam.setFont(f1);
-		con.add(lnam);
+		JPanel genderPanel = new JPanel();
+		genderPanel.setOpaque(false);
+		maleButton = new JRadioButton("Male");
+		femaleButton = new JRadioButton("Female");
+		maleButton.setOpaque(false);
+		femaleButton.setOpaque(false);
+		maleButton.setSelected(true);
+		maleButton.setActionCommand("male");
+		femaleButton.setActionCommand("female");
 
-		gender = new JLabel("Gender:");
-		gender.setBounds(500, 110, 90, 30);
-		gender.setFont(f1);
-		con.add(gender);
+		genderGroup = new ButtonGroup();
+		genderGroup.add(maleButton);
+		genderGroup.add(femaleButton);
 
-		mno = new JLabel("Mobile #:");
-		mno.setBounds(500, 190, 80, 30);
-		mno.setFont(f1);
-		con.add(mno);
+		genderPanel.add(maleButton);
+		genderPanel.add(femaleButton);
+		form.add(genderPanel, fieldConstraints(row));
+	}
 
-		cnum = new JLabel("+63");
-		cnum.setBounds(630, 190, 30, 30);
-		cnum.setFont(f1);
-		con.add(cnum);
+	private void addBirthdateRow(JPanel form, int row) {
+		form.add(AppTheme.label("Birthdate"), labelConstraints(row));
 
-		unam = new JLabel("Username:");
-		unam.setBounds(500, 230, 80, 30);
-		unam.setFont(f1);
-		con.add(unam);
+		JPanel birthdatePanel = new JPanel(new GridBagLayout());
+		birthdatePanel.setOpaque(false);
+		monthBox = new JComboBox<String>(new String[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
+				"Sep", "Oct", "Nov", "Dec" });
+		dayBox = new JComboBox<String>(buildDays());
+		yearBox = new JComboBox<String>(AppOptions.birthYearsThroughCurrentYear());
 
-		rpass = new JLabel("Repeat Password:");
-		rpass.setBounds(500, 270, 120, 30);
-		rpass.setFont(f1);
-		con.add(rpass);
+		birthdatePanel.add(monthBox, AppTheme.constraints(0, 0));
+		birthdatePanel.add(dayBox, AppTheme.constraints(1, 0));
+		birthdatePanel.add(yearBox, AppTheme.constraints(2, 0));
+		form.add(birthdatePanel, fieldConstraints(row));
+	}
 
-		email = new JLabel("E-mail:");
-		email.setBounds(40, 230, 80, 30);
-		email.setFont(f1);
-		con.add(email);
+	private void addTermsRow(JPanel form, int row) {
+		termsBox = new JCheckBox("Accept Terms and Conditions");
+		termsBox.setOpaque(false);
 
-		pass = new JLabel("Password:");
-		pass.setBounds(40, 270, 80, 30);
-		pass.setFont(f1);
-		con.add(pass);
+		GridBagConstraints constraints = fieldConstraints(row);
+		constraints.gridwidth = 2;
+		constraints.gridx = 0;
+		form.add(termsBox, constraints);
+	}
 
-		String Select[] = { "Select -/-", "Hatchback", " Sedan", "MPV", "SUV", "Crossover", " Coupe", "Convertible",
-				"Sports Car", "Utility", "Compact", "Mini Van", "Van", "Pick-Up Truck" };
+	private void addActions(JPanel form, int row) {
+		JPanel actions = new JPanel();
+		actions.setOpaque(false);
 
-		term = new JCheckBox("Accept Terms And Conditions.");
-		term.setFont(new Font("Arial", Font.PLAIN, 15));
-		term.setBounds(150, 320, 300, 30);
-		con.add(term);
+		submitButton = AppTheme.primaryButton("Submit");
+		resetButton = AppTheme.secondaryButton("Reset");
+		backButton = AppTheme.secondaryButton("Back to Login");
 
-		sub = new JButton("Submit");
-		sub.setFont(new Font("Arial", Font.PLAIN, 15));
-		sub.setBounds(150, 370, 100, 20);
-		sub.addActionListener(this);
-		con.add(sub);
+		submitButton.addActionListener(this);
+		resetButton.addActionListener(this);
+		backButton.addActionListener(this);
 
-		reset1 = new JButton("Reset");
-		reset1.setFont(new Font("Arial", Font.PLAIN, 15));
-		reset1.setBounds(300, 370, 100, 20);
-		reset1.addActionListener(this);
-		con.add(reset1);
+		actions.add(submitButton);
+		actions.add(resetButton);
+		actions.add(backButton);
 
-		tfnam = new JTextField();
-		tfnam.setBounds(150, 110, 300, 30);
-		tfnam.setFont(f1);
-		con.add(tfnam);
+		GridBagConstraints constraints = fieldConstraints(row);
+		constraints.gridwidth = 2;
+		constraints.gridx = 0;
+		form.add(actions, constraints);
+	}
 
-		tmnam = new JTextField();
-		tmnam.setBounds(150, 150, 300, 30);
-		tmnam.setFont(f1);
-		con.add(tmnam);
+	private JTextArea buildSummary() {
+		summaryArea = new JTextArea(16, 26);
+		summaryArea.setEditable(false);
+		summaryArea.setLineWrap(true);
+		summaryArea.setWrapStyleWord(true);
+		summaryArea.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+		summaryArea.setText("Registration summary will appear here after validation.");
+		return summaryArea;
+	}
 
-		tlnam = new JTextField();
-		tlnam.setBounds(150, 190, 300, 30);
-		tlnam.setFont(f1);
-		con.add(tlnam);
+	private GridBagConstraints labelConstraints(int row) {
+		GridBagConstraints constraints = AppTheme.constraints(0, row);
+		constraints.weightx = 0;
+		return constraints;
+	}
 
-		tmno = new JTextField();
-		tmno.setBounds(670, 190, 260, 30);
-		tmno.setFont(f1);
-		con.add(tmno);
+	private GridBagConstraints fieldConstraints(int row) {
+		GridBagConstraints constraints = AppTheme.constraints(1, row);
+		constraints.weightx = 1;
+		return constraints;
+	}
 
-		temail = new JTextField();
-		temail.setBounds(150, 230, 300, 30);
-		temail.setFont(f1);
-		con.add(temail);
-
-		tunam = new JTextField();
-		tunam.setBounds(630, 230, 300, 30);
-		tunam.setFont(f1);
-		con.add(tunam);
-
-		tpass = new JPasswordField();
-		tpass.setBounds(150, 270, 300, 30);
-		tpass.setFont(f1);
-		con.add(tpass);
-
-		trpass = new JPasswordField();
-		trpass.setBounds(630, 270, 300, 30);
-		trpass.setFont(f1);
-		con.add(trpass);
-
-		tout = new JTextArea();
-		tout.setFont(new Font("Arial", Font.PLAIN, 15));
-		tout.setBounds(950, 110, 300, 250);
-		tout.setLineWrap(true);
-		tout.setEditable(false);
-		con.add(tout);
-
-		male = new JRadioButton("Male");
-		male.setFont(new Font("Arial", Font.PLAIN, 15));
-		male.setSelected(true);
-		male.setBounds(630, 110, 80, 30);
-		male.setActionCommand("male");
-		con.add(male);
-
-		female = new JRadioButton("Female");
-		female.setFont(new Font("Arial", Font.PLAIN, 15));
-		female.setSelected(false);
-		female.setBounds(750, 110, 80, 30);
-		female.setActionCommand("female");
-		con.add(female);
-
-		gengp = new ButtonGroup();
-		gengp.add(male);
-		gengp.add(female);
-
-		bdate = new JLabel("Birthdate:");
-		bdate.setFont(new Font("Arial", Font.PLAIN, 15));
-		bdate.setBounds(500, 150, 80, 30);
-		con.add(bdate);
-
-		String dates[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17",
-				"18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31" };
-		date = new JComboBox(dates);
-		date.setFont(new Font("Arial", Font.PLAIN, 15));
-		date.setBounds(730, 150, 80, 30);
-		con.add(date);
-
-		String months[] = { "Jan", "feb", "Mar", "Apr", "May", "Jun", "July", "Aug", "Sep", "Oct", "Nov", "Dec" };
-		month = new JComboBox(months);
-		month.setFont(new Font("Arial", Font.PLAIN, 15));
-		month.setBounds(630, 150, 80, 30);
-		con.add(month);
-
-		String years[] = { "1930", "1931", "1932", "1933", "1934", "1935", "1936", "1937", "1938", "1939", "1940",
-				"1941", "1942", "1943", "1944", "1945", "1946", "1947", "1948", "1949", "1950", "1951", "1952", "1953",
-				"1954", "1955", "1956", "1957", "1958", "1959", "1960", "1961", "1962", "1963", "1964", "1965", "1966",
-				"1967", "1968", "1969", "1970", "1971", "1972", "1973", "1974", "1975", "1976", "1977", "1978", "1979",
-				"1980", "1981", "1982", "1983", "1984", "1985", "1986", "1987", "1988", "1989", "1990", "1991", "1992",
-				"1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005",
-				"2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018",
-				"2019", "2020" };
-		year = new JComboBox(years);
-		year.setFont(new Font("Arial", Font.PLAIN, 15));
-		year.setBounds(830, 150, 80, 30);
-		con.add(year);
-
-		Clock();
-
+	private String[] buildDays() {
+		String[] days = new String[31];
+		for (int index = 0; index < days.length; index++) {
+			days[index] = String.valueOf(index + 1);
+		}
+		return days;
 	}
 
 	@Override
-	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
-		pass1 = tpass.getPassword();
-		tpass1 = String.valueOf(pass1);
-		pass2 = trpass.getPassword();
-		trpass2 = String.valueOf(pass2);
-		if (e.getSource() == sub) {
-			if (term.isSelected()) {
-
-				String data1;
-				String data = "Name : " + tfnam.getText() + " " + tmnam.getText() + " " + tlnam.getText() + "\n"
-						+ "Mobile :+63" + tmno.getText() + "\n" + "E-mail :" + temail.getText() + "\n" + "Username :"
-						+ tunam.getText() + "\n";
-				if (male.isSelected())
-					data1 = "Gender : Male" + "\n";
-				else
-					data1 = "Gender : Female" + "\n";
-				String data2 = "Date of Birth : " + (String) date.getSelectedItem() + "/"
-						+ (String) month.getSelectedItem() + "/" + (String) year.getSelectedItem() + "\n";
-
-				String data3 = "\n";
-				tout.setText(data + data1 + data2 + data3);
-				tout.setEditable(false);
-				int dialog = JOptionPane.showConfirmDialog(null,
-						"Check the summary if there's missing, if yes click No", "WARNING", JOptionPane.YES_NO_OPTION,
-						JOptionPane.WARNING_MESSAGE);
-				if (dialog == JOptionPane.YES_OPTION) {
-					JOptionPane.showMessageDialog(this, "Registration Successfully");
-
-					try {
-						String query = "insert into adminaccount (FirstName,MiddleName,LastName,Email,Gender,Birthdate,MobileNumber,Username,Password,RepeatPassword) values (?,?,?,?,?,?,?,?,?,?) ";
-
-						ps = conn.prepareStatement(query);
-						ps.setString(1, tfnam.getText());
-						ps.setString(2, tmnam.getText());
-						ps.setString(3, tlnam.getText());
-						ps.setString(4, temail.getText());
-						ps.setString(5, gengp.getSelection().getActionCommand());
-						ps.setString(6, (String) date.getSelectedItem());
-						ps.setString(6, (String) month.getSelectedItem());
-						ps.setString(6, (String) year.getSelectedItem());
-						ps.setString(7, tmno.getText());
-						ps.setString(8, tunam.getText());
-						ps.setString(9, tpass.getText());
-						ps.setString(10, trpass.getText());
-
-						ps.execute();
-						JOptionPane.showMessageDialog(null, "Data Saved");
-
-						ps.close();
-					} catch (Exception ex) {
-						ex.printStackTrace();
-
-					}
-
-					// pabalik ng login.java
-					login app = new login();
-					app.setTitle("Admin Login");
-					app.setVisible(true);
-					app.setSize(450, 600);
-					app.setLocationRelativeTo(null);
-					reg.this.dispose();
-				}
-				if (dialog == JOptionPane.NO_OPTION) {
-					reg.this.show();
-				}
-			} else {
-				tout.setText("");
-				JOptionPane.showMessageDialog(this, "Please accept the" + " terms & conditions!", "Alert",
-						JOptionPane.WARNING_MESSAGE);
-			}
-		}
-
-		else if (e.getSource() == reset1) {
-			String def = "";
-			tfnam.setText(def);
-			tmnam.setText(def);
-			tlnam.setText(def);
-			temail.setText(def);
-			tunam.setText(def);
-			tpass.setText(def);
-			trpass.setText(def);
-			tmno.setText(def);
-			tout.setText(def);
-			term.setSelected(false);
-			date.setSelectedIndex(0);
-			month.setSelectedIndex(0);
-			year.setSelectedIndex(0);
+	public void actionPerformed(ActionEvent event) {
+		Object source = event.getSource();
+		if (source == submitButton) {
+			submitRegistration();
+		} else if (source == resetButton) {
+			clearForm();
+		} else if (source == backButton) {
+			openLogin();
 		}
 	}
 
-//main
+	private void submitRegistration() {
+		String password = new String(passwordField.getPassword());
+		String repeatPassword = new String(repeatPasswordField.getPassword());
 
-	static reg app = new reg();
+		if (!termsBox.isSelected()) {
+			summaryArea.setText("Please accept the terms and conditions.");
+			return;
+		}
+		if (isBlank(firstNameField) || isBlank(middleNameField) || isBlank(lastNameField) || isBlank(emailField)
+				|| isBlank(mobileField) || isBlank(usernameField) || password.trim().isEmpty()
+				|| repeatPassword.trim().isEmpty()) {
+			summaryArea.setText("Please fill in every admin registration field.");
+			return;
+		}
+		if (!password.equals(repeatPassword)) {
+			summaryArea.setText("Passwords do not match.");
+			return;
+		}
+		if (conn == null) {
+			AppTheme.showError(this, "Database connection is not available.", null);
+			return;
+		}
+
+		String birthdate = monthBox.getSelectedItem() + " " + dayBox.getSelectedItem() + ", "
+				+ yearBox.getSelectedItem();
+		String sql = "insert into adminaccount "
+				+ "(FirstName,MiddleName,LastName,Email,Gender,Birthdate,MobileNumber,Username,Password,RepeatPassword) "
+				+ "values (?,?,?,?,?,?,?,?,?,?)";
+
+		try (PreparedStatement statement = conn.prepareStatement(sql)) {
+			statement.setString(1, firstNameField.getText().trim());
+			statement.setString(2, middleNameField.getText().trim());
+			statement.setString(3, lastNameField.getText().trim());
+			statement.setString(4, emailField.getText().trim());
+			statement.setString(5, genderGroup.getSelection().getActionCommand());
+			statement.setString(6, birthdate);
+			statement.setString(7, mobileField.getText().trim());
+			statement.setString(8, usernameField.getText().trim());
+			statement.setString(9, password);
+			statement.setString(10, repeatPassword);
+			statement.executeUpdate();
+
+			summaryArea.setText("Admin saved:\n" + firstNameField.getText().trim() + " "
+					+ lastNameField.getText().trim() + "\n" + emailField.getText().trim() + "\n"
+					+ usernameField.getText().trim());
+			openLogin();
+		} catch (Exception error) {
+			AppTheme.showError(this, "Unable to save admin registration.", error);
+		}
+	}
+
+	private boolean isBlank(JTextField field) {
+		return field.getText().trim().isEmpty();
+	}
+
+	private void clearForm() {
+		firstNameField.setText("");
+		middleNameField.setText("");
+		lastNameField.setText("");
+		emailField.setText("");
+		mobileField.setText("");
+		usernameField.setText("");
+		passwordField.setText("");
+		repeatPasswordField.setText("");
+		termsBox.setSelected(false);
+		maleButton.setSelected(true);
+		dayBox.setSelectedIndex(0);
+		monthBox.setSelectedIndex(0);
+		yearBox.setSelectedIndex(0);
+		summaryArea.setText("Registration summary will appear here after validation.");
+	}
+
+	private void openLogin() {
+		login app = new login();
+		AppTheme.showFrame(app, "Admin Login", 540, 640);
+		dispose();
+	}
 
 	public static void main(String[] args) {
-		app.setTitle("Admin Registration Form");
-		app.setSize(1300, 450);
-		app.setVisible(true);
-		app.setLocationRelativeTo(null);
-		app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
+		SwingUtilities.invokeLater(() -> {
+			reg app = new reg();
+			app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			AppTheme.showFrame(app, "Admin Registration Form", 1100, 560);
+		});
 	}
-
 }

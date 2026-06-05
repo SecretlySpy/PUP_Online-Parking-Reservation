@@ -1,198 +1,273 @@
 package usermanagement;
 
 import DatabaseConnection.ConnectionDB;
+import app.AppTheme;
+import app.SessionContext;
+import app.UserRole;
 
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPasswordField;
-import javax.swing.JTextField;
-import java.awt.Color;
-import java.awt.Container;
-import java.awt.Font;
+import java.awt.BorderLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
 
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+
+/**
+ * User login screen for customer-facing workflows.
+ */
 public class login extends JFrame implements ActionListener {
-	public JLabel unam, pas, lblClock;
-	public JTextField t1;
-	public JButton login, res, reg1;
-	public JCheckBox show;
-	public JPasswordField pfpwd;
-	public Connection conn = null;
-
-	private final Font f1 = new Font("Times New Roman", Font.BOLD, 17);
-	private final Font f2 = new Font("Arial", Font.ITALIC, 13);
-	private final Font f3 = new Font("Times New Roman", Font.PLAIN, 15);
+	private JTextField usernameField;
+	private JPasswordField passwordField;
+	private JButton loginButton;
+	private JButton resetButton;
+	private JButton registerButton;
+	private JCheckBox showPasswordBox;
+	private JLabel statusLabel;
+	private Connection conn;
 
 	public login() {
+		AppTheme.install();
 		conn = ConnectionDB.getConnection();
-
-		Container con = getContentPane();
-		con.setLayout(null);
-
-		con.add(lblClock = new JLabel(""));
-		lblClock.setBounds(170, 10, 260, 30);
-		lblClock.setFont(f3);
-
-		JLabel title = new JLabel("User Login");
-		title.setBounds(170, 70, 160, 30);
-		title.setFont(new Font("Times New Roman", Font.BOLD, 22));
-		con.add(title);
-
-		unam = new JLabel("User Name");
-		pas = new JLabel("Password");
-		t1 = new JTextField();
-		pfpwd = new JPasswordField();
-		login = new JButton("Login");
-		show = new JCheckBox("Show Password");
-		res = new JButton("Reset");
-		reg1 = new JButton("Register!");
-
-		login.addActionListener(this);
-		show.addActionListener(this);
-		res.addActionListener(this);
-		reg1.addActionListener(this);
-
-		unam.setBounds(50, 150, 100, 20);
-		pas.setBounds(50, 220, 100, 20);
-		t1.setBounds(150, 150, 200, 20);
-		pfpwd.setBounds(150, 220, 200, 20);
-		show.setBounds(150, 250, 150, 20);
-		login.setBounds(50, 300, 150, 20);
-		res.setBounds(200, 300, 150, 20);
-		reg1.setBounds(125, 350, 150, 20);
-
-		unam.setFont(f1);
-		pas.setFont(f1);
-		t1.setFont(f1);
-		pfpwd.setFont(f1);
-		login.setFont(f2);
-		res.setFont(f2);
-		show.setFont(f2);
-		reg1.setFont(f2);
-
-		unam.setForeground(Color.BLACK);
-		pas.setForeground(Color.BLACK);
-
-		con.add(unam);
-		con.add(pas);
-		con.add(t1);
-		con.add(pfpwd);
-		con.add(login);
-		con.add(res);
-		con.add(show);
-		con.add(reg1);
-
-		Clock();
+		setContentPane(AppTheme.shell("Customer Portal", "Sign in to view your profile and parking details.", buildContent()));
 	}
 
-	private void Clock() {
-		Thread clock = new Thread() {
-			@Override
-			public void run() {
-				try {
-					while (true) {
-						Calendar cal = new GregorianCalendar();
-						lblClock.setText("Time " + cal.get(Calendar.HOUR) + " : " + cal.get(Calendar.MINUTE) + " : "
-								+ cal.get(Calendar.SECOND) + " Date " + cal.get(Calendar.YEAR) + " / "
-								+ (cal.get(Calendar.MONTH) + 1) + " / " + cal.get(Calendar.DAY_OF_MONTH));
-						sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
-			}
-		};
-		clock.start();
+	private JPanel buildContent() {
+		JPanel card = AppTheme.card();
+		card.setLayout(new BorderLayout(0, 18));
+		card.add(buildHeaderRow(), BorderLayout.NORTH);
+		card.add(buildForm(), BorderLayout.CENTER);
+		card.add(buildActions(), BorderLayout.SOUTH);
+		return card;
+	}
+
+	private JPanel buildHeaderRow() {
+		JPanel header = new JPanel(new BorderLayout());
+		header.setOpaque(false);
+		header.add(AppTheme.sectionLabel("User Login"), BorderLayout.WEST);
+		header.add(AppTheme.clockLabel(), BorderLayout.EAST);
+		return header;
+	}
+
+	private JPanel buildForm() {
+		JPanel form = new JPanel(new GridBagLayout());
+		form.setOpaque(false);
+
+		JLabel usernameLabel = AppTheme.label("Username");
+		usernameField = AppTheme.textField("Username");
+		usernameLabel.setLabelFor(usernameField);
+
+		JLabel passwordLabel = AppTheme.label("Password");
+		passwordField = AppTheme.passwordField("Password");
+		passwordLabel.setLabelFor(passwordField);
+
+		showPasswordBox = new JCheckBox("Show password");
+		showPasswordBox.setOpaque(false);
+		showPasswordBox.addActionListener(this);
+
+		statusLabel = AppTheme.label("Use your registered customer account.");
+		statusLabel.setForeground(AppTheme.MUTED_TEXT);
+
+		GridBagConstraints labelConstraints = AppTheme.constraints(0, 0);
+		labelConstraints.weightx = 0;
+		labelConstraints.insets.set(8, 0, 4, 0);
+		form.add(usernameLabel, labelConstraints);
+
+		GridBagConstraints usernameConstraints = AppTheme.constraints(0, 1);
+		usernameConstraints.insets.set(0, 0, 12, 0);
+		form.add(usernameField, usernameConstraints);
+
+		GridBagConstraints passwordLabelConstraints = AppTheme.constraints(0, 2);
+		passwordLabelConstraints.insets.set(8, 0, 4, 0);
+		form.add(passwordLabel, passwordLabelConstraints);
+
+		GridBagConstraints passwordConstraints = AppTheme.constraints(0, 3);
+		passwordConstraints.insets.set(0, 0, 8, 0);
+		form.add(passwordField, passwordConstraints);
+
+		GridBagConstraints showConstraints = AppTheme.constraints(0, 4);
+		showConstraints.insets.set(0, 0, 8, 0);
+		form.add(showPasswordBox, showConstraints);
+
+		GridBagConstraints statusConstraints = AppTheme.constraints(0, 5);
+		statusConstraints.insets.set(6, 0, 0, 0);
+		form.add(statusLabel, statusConstraints);
+
+		return form;
+	}
+
+	private JPanel buildActions() {
+		JPanel actions = new JPanel(new GridBagLayout());
+		actions.setOpaque(false);
+		actions.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+
+		loginButton = AppTheme.primaryButton("Login");
+		resetButton = AppTheme.secondaryButton("Reset");
+		registerButton = AppTheme.secondaryButton("Create Account");
+
+		loginButton.addActionListener(this);
+		resetButton.addActionListener(this);
+		registerButton.addActionListener(this);
+
+		actions.add(loginButton, AppTheme.constraints(0, 0));
+		actions.add(resetButton, AppTheme.constraints(1, 0));
+
+		GridBagConstraints registerConstraints = AppTheme.constraints(0, 1);
+		registerConstraints.gridwidth = 2;
+		actions.add(registerButton, registerConstraints);
+
+		return actions;
 	}
 
 	@Override
-	public void actionPerformed(ActionEvent e) {
-		if (e.getSource() == reg1) {
-			reg app = new reg();
-			app.setTitle("Registration Form");
-			app.setSize(1000, 750);
-			app.setVisible(true);
-			app.setLocationRelativeTo(null);
-			dispose();
-			return;
-		}
-
-		if (e.getSource() == login) {
+	public void actionPerformed(ActionEvent event) {
+		Object source = event.getSource();
+		if (source == registerButton) {
+			openRegistration();
+		} else if (source == loginButton) {
 			loginUser();
+		} else if (source == resetButton) {
+			resetForm();
+		} else if (source == showPasswordBox) {
+			passwordField.setEchoChar(showPasswordBox.isSelected() ? (char) 0 : '*');
+		}
+	}
+
+	private void openRegistration() {
+			reg app = new reg();
+		AppTheme.showFrame(app, "Registration Form", 1000, 750);
+		dispose();
+	}
+
+	private void resetForm() {
+		usernameField.setText("");
+		passwordField.setText("");
+		statusLabel.setText("Use your registered customer account.");
+		usernameField.requestFocusInWindow();
+	}
+
+	@Override
+	public void setVisible(boolean visible) {
+		if (visible) {
+			wirePasswordResetButton();
+		}
+		super.setVisible(visible);
+	}
+
+	private void wirePasswordResetButton() {
+		java.awt.Component[] components = getContentPane().getComponents();
+		for (java.awt.Component component : components) {
+			if (component instanceof javax.swing.JButton) {
+				javax.swing.JButton button = (javax.swing.JButton) component;
+				String text = button.getText() == null ? "" : button.getText().trim().toLowerCase();
+				if (text.contains("reset") || text.contains("forgot")) {
+					button.setText("Forgot Password");
+					for (java.awt.event.ActionListener listener : button.getActionListeners()) {
+						button.removeActionListener(listener);
+					}
+					button.addActionListener(new java.awt.event.ActionListener() {
+						@Override
+						public void actionPerformed(java.awt.event.ActionEvent event) {
+							resetPassword();
+						}
+					});
+					return;
+				}
+			}
+		}
+	}
+
+	private void resetPassword() {
+		String accountInput = javax.swing.JOptionPane.showInputDialog(this,
+				"Enter your username or registered email address:");
+		if (accountInput == null) {
+			return;
+		}
+		accountInput = accountInput.trim();
+
+		if (accountInput.isEmpty()) {
+			javax.swing.JOptionPane.showMessageDialog(this, "Please enter your username or registered email address.");
 			return;
 		}
 
-		if (e.getSource() == res) {
-			t1.setText("");
-			pfpwd.setText("");
+		int confirm = javax.swing.JOptionPane.showConfirmDialog(this,
+				"A temporary password will be sent to the email address on your account.", "Reset Password",
+				javax.swing.JOptionPane.OK_CANCEL_OPTION);
+		if (confirm != javax.swing.JOptionPane.OK_OPTION) {
 			return;
 		}
 
-		if (e.getSource() == show) {
-			pfpwd.setEchoChar(show.isSelected() ? (char) 0 : '*');
+		try (java.sql.Connection resetConnection = DatabaseConnection.ConnectionDB.getConnection()) {
+			if (resetConnection == null) {
+				javax.swing.JOptionPane.showMessageDialog(this, "Database connection is not available.");
+				return;
+			}
+			PasswordResetService.PasswordResetResult result = new PasswordResetService().resetCustomerPassword(
+					resetConnection, accountInput);
+			javax.swing.JOptionPane.showMessageDialog(this,
+					"A temporary password was sent to " + result.getMaskedEmail() + " for " + result.getUsername()
+							+ ".");
+		} catch (Exception ex) {
+			javax.swing.JOptionPane.showMessageDialog(this, "Unable to reset password: " + ex.getMessage());
 		}
 	}
 
 	private void loginUser() {
 		if (conn == null) {
-			JOptionPane.showMessageDialog(this, "Database connection is not available.");
+			AppTheme.showError(this, "Database connection is not available. Check the MySQL container or local service.",
+					null);
 			return;
 		}
 
-		String username = t1.getText().trim();
-		String password = new String(pfpwd.getPassword());
-
+		String username = usernameField.getText().trim();
+		String password = new String(passwordField.getPassword());
 		if (username.isEmpty() || password.isEmpty()) {
-			JOptionPane.showMessageDialog(this, "Please enter your username and password.");
+			statusLabel.setText("Enter both username and password.");
 			return;
 		}
 
-		try {
-			String sql = "select Username from useraccount where Username=? and Password=?";
-			PreparedStatement ps = conn.prepareStatement(sql);
-			ps.setString(1, username);
-			ps.setString(2, password);
-			ResultSet rs = ps.executeQuery();
-
-			if (rs.next()) {
-				String loggedInUsername = rs.getString("Username");
-				rs.close();
-				ps.close();
-
-				JOptionPane.showMessageDialog(this, "Login successful.");
-				menu app = new menu(loggedInUsername);
-				app.setTitle("User Menu");
-				app.setSize(1000, 400);
-				app.setVisible(true);
-				app.setLocationRelativeTo(null);
-				dispose();
-			} else {
-				rs.close();
-				ps.close();
-				JOptionPane.showMessageDialog(this, "Invalid username or password.");
-				t1.setText("");
-				pfpwd.setText("");
+		String sql = "select Username from useraccount where Username=? and Password=?";
+		try (PreparedStatement statement = conn.prepareStatement(sql)) {
+			statement.setString(1, username);
+			statement.setString(2, password);
+			try (ResultSet resultSet = statement.executeQuery()) {
+				if (resultSet.next()) {
+					openMenu(resultSet.getString("Username"));
+				} else {
+					statusLabel.setText("Invalid username or password.");
+					passwordField.setText("");
+				}
 			}
-		} catch (Exception ex) {
-			JOptionPane.showMessageDialog(this, "Unable to log in: " + ex.getMessage());
+		} catch (Exception error) {
+			AppTheme.showError(this, "Unable to log in.", error);
 		}
 	}
 
+	private void openMenu(String loggedInUsername) {
+		SessionContext.signIn(loggedInUsername, UserRole.USER);
+		JOptionPane.showMessageDialog(this, "Login successful.");
+		menu app = new menu(loggedInUsername);
+		AppTheme.showFrame(app, "User Menu", 980, 540);
+		dispose();
+	}
+
 	public static void main(String[] args) {
-		login app = new login();
-		app.setTitle("User Login");
-		app.setSize(450, 600);
-		app.setVisible(true);
-		app.setLocationRelativeTo(null);
-		app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		SwingUtilities.invokeLater(() -> {
+			login app = new login();
+			app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			AppTheme.showFrame(app, "User Login", 520, 620);
+		});
 	}
 }

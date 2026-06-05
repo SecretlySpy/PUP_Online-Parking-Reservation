@@ -1,7 +1,25 @@
 package usermanagement;
 
 import DatabaseConnection.ConnectionDB;
+import app.AppOptions;
+import app.AppTheme;
+import app.FormValidator;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+
+import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -10,377 +28,577 @@ import javax.swing.JColorChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import java.awt.Color;
-import java.awt.Container;
-import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
+import javax.swing.SwingUtilities;
 
+/**
+ * Customer sign-up screen for creating a profile, address, and vehicle record.
+ */
 public class reg extends JFrame implements ActionListener {
-	private JTextField tfnam, tmnam, tlnam, tmno, temail, tunam;
-	private JTextField tplatno, tbrand, tcolor, toccupation, tunit, tstreet, tdistrict, tcity;
-	private JPasswordField tpass, trpass;
-	private JRadioButton male, female;
-	private ButtonGroup gengp;
-	private JComboBox<String> date, month, year, carType;
-	private JCheckBox term;
-	private JButton sub, reset1, col;
-	private JTextArea tout;
-	private JLabel lblClock;
+	private JTextField firstNameField;
+	private JTextField middleNameField;
+	private JTextField lastNameField;
+	private JTextField mobileField;
+	private JTextField emailField;
+	private JTextField usernameField;
+	private JTextField plateField;
+	private JTextField brandField;
+	private JTextField colorField;
+	private JTextField occupationField;
+	private JTextField unitField;
+	private JTextField streetField;
+	private JTextField districtField;
+	private JTextField cityField;
+	private JPasswordField passwordField;
+	private JPasswordField repeatPasswordField;
+	private JRadioButton maleButton;
+	private JRadioButton femaleButton;
+	private ButtonGroup genderGroup;
+	private JComboBox<String> dayBox;
+	private JComboBox<String> monthBox;
+	private JComboBox<String> yearBox;
+	private JComboBox<String> carTypeBox;
+	private JCheckBox termsBox;
+	private JButton submitButton;
+	private JButton resetButton;
+	private JButton colorButton;
+	private JButton backButton;
+	private JTextArea summaryArea;
+	private JLabel statusLabel;
+	private JLabel colorPreview;
+	private JPanel sectionsPanel;
+	private JPanel personalSection;
+	private JPanel addressSection;
+	private JPanel carSection;
+	private JPanel summarySection;
+	private boolean compactLayout;
 	private Connection conn;
 
-	private final Font labelFont = new Font("Times New Roman", Font.PLAIN, 15);
-	private final Font sectionFont = new Font("Times New Roman", Font.BOLD, 20);
-	private final Font smallFont = new Font("Times New Roman", Font.PLAIN, 13);
-
 	public reg() {
+		AppTheme.install();
 		conn = ConnectionDB.getConnection();
-
-		Container con = getContentPane();
-		con.setLayout(null);
-
-		JLabel title = new JLabel("Archim's TechCorner");
-		title.setBounds(40, 10, 220, 30);
-		con.add(title);
-
-		con.add(lblClock = new JLabel(""));
-		lblClock.setBounds(720, 10, 260, 30);
-		lblClock.setFont(smallFont);
-
-		JLabel custdet = new JLabel("----------------------------------------------------CUSTOMER PROFILE--------------------------------------------------");
-		custdet.setBounds(10, 55, 1200, 50);
-		custdet.setFont(sectionFont);
-		con.add(custdet);
-
-		addLabel(con, "First Name:", 40, 110, 100, 30);
-		tfnam = addTextField(con, 150, 110, 300, 30);
-
-		addLabel(con, "Middle Name:", 40, 150, 100, 30);
-		tmnam = addTextField(con, 150, 150, 300, 30);
-
-		addLabel(con, "Last Name:", 40, 190, 100, 30);
-		tlnam = addTextField(con, 150, 190, 300, 30);
-
-		addLabel(con, "E-mail:", 40, 230, 100, 30);
-		temail = addTextField(con, 150, 230, 300, 30);
-
-		addLabel(con, "Password:", 40, 270, 100, 30);
-		tpass = addPasswordField(con, 150, 270, 300, 30);
-
-		addLabel(con, "Gender:", 500, 110, 100, 30);
-		male = new JRadioButton("Male");
-		male.setFont(labelFont);
-		male.setSelected(true);
-		male.setBounds(630, 110, 80, 30);
-		male.setActionCommand("male");
-		con.add(male);
-
-		female = new JRadioButton("Female");
-		female.setFont(labelFont);
-		female.setBounds(750, 110, 90, 30);
-		female.setActionCommand("female");
-		con.add(female);
-
-		gengp = new ButtonGroup();
-		gengp.add(male);
-		gengp.add(female);
-
-		addLabel(con, "Birthdate:", 500, 150, 100, 30);
-		month = new JComboBox<String>(new String[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
-				"Oct", "Nov", "Dec" });
-		month.setBounds(630, 150, 80, 30);
-		con.add(month);
-
-		date = new JComboBox<String>(new String[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-				"11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25",
-				"26", "27", "28", "29", "30", "31" });
-		date.setBounds(730, 150, 80, 30);
-		con.add(date);
-
-		year = new JComboBox<String>(buildYears());
-		year.setBounds(830, 150, 80, 30);
-		con.add(year);
-
-		addLabel(con, "Mobile #:", 500, 190, 100, 30);
-		JLabel countryCode = new JLabel("+63");
-		countryCode.setBounds(630, 190, 30, 30);
-		con.add(countryCode);
-		tmno = addTextField(con, 670, 190, 260, 30);
-
-		addLabel(con, "Username:", 500, 230, 100, 30);
-		tunam = addTextField(con, 630, 230, 300, 30);
-
-		addLabel(con, "Repeat Password:", 500, 270, 120, 30);
-		trpass = addPasswordField(con, 630, 270, 300, 30);
-
-		JLabel addressSection = new JLabel("------------------------ADDRESS AND WORK INFORMATION------------------------");
-		addressSection.setBounds(10, 315, 620, 40);
-		addressSection.setFont(sectionFont);
-		con.add(addressSection);
-
-		addLabel(con, "Occupation:", 40, 360, 100, 30);
-		toccupation = addTextField(con, 150, 360, 300, 30);
-
-		addLabel(con, "Unit:", 40, 400, 100, 30);
-		tunit = addTextField(con, 150, 400, 300, 30);
-
-		addLabel(con, "Street:", 40, 440, 100, 30);
-		tstreet = addTextField(con, 150, 440, 300, 30);
-
-		addLabel(con, "District:", 40, 480, 100, 30);
-		tdistrict = addTextField(con, 150, 480, 300, 30);
-
-		addLabel(con, "City/Province:", 40, 520, 100, 30);
-		tcity = addTextField(con, 150, 520, 300, 30);
-
-		JLabel carprof = new JLabel("------------------------CAR PROFILE------------------------");
-		carprof.setBounds(500, 315, 520, 40);
-		carprof.setFont(sectionFont);
-		con.add(carprof);
-
-		addLabel(con, "PLATE #:", 540, 360, 100, 30);
-		tplatno = addTextField(con, 650, 360, 300, 30);
-
-		addLabel(con, "Brand:", 540, 400, 100, 30);
-		tbrand = addTextField(con, 650, 400, 300, 30);
-
-		addLabel(con, "Color:", 540, 440, 100, 30);
-		tcolor = addTextField(con, 650, 440, 150, 30);
-
-		col = new JButton("Choose Color");
-		col.setBounds(820, 440, 130, 30);
-		col.setFont(labelFont);
-		col.addActionListener(this);
-		con.add(col);
-
-		addLabel(con, "Type of Car:", 540, 480, 100, 30);
-		carType = new JComboBox<String>(new String[] { "Select -/-", "Hatchback", "Sedan", "MPV", "SUV", "Crossover",
-				"Coupe", "Convertible", "Sports Car", "Utility", "Compact", "Mini Van", "Van", "Pick-Up Truck" });
-		carType.setBounds(650, 480, 150, 30);
-		con.add(carType);
-
-		term = new JCheckBox("Accept Terms And Conditions.");
-		term.setFont(labelFont);
-		term.setBounds(150, 565, 300, 30);
-		con.add(term);
-
-		sub = new JButton("Submit");
-		sub.setBounds(150, 610, 100, 25);
-		sub.addActionListener(this);
-		con.add(sub);
-
-		reset1 = new JButton("Reset");
-		reset1.setBounds(300, 610, 100, 25);
-		reset1.addActionListener(this);
-		con.add(reset1);
-
-		tout = new JTextArea();
-		tout.setBounds(650, 525, 300, 145);
-		tout.setLineWrap(true);
-		tout.setWrapStyleWord(true);
-		tout.setEditable(false);
-		con.add(tout);
-
-		Clock();
+		setContentPane(AppTheme.shell("Create Customer Account",
+				"Set up your customer profile, address details, and vehicle information.", buildContent()));
 	}
 
-	private void addLabel(Container con, String text, int x, int y, int width, int height) {
-		JLabel label = new JLabel(text);
-		label.setBounds(x, y, width, height);
-		label.setFont(labelFont);
-		con.add(label);
-	}
-
-	private JTextField addTextField(Container con, int x, int y, int width, int height) {
-		JTextField textField = new JTextField();
-		textField.setBounds(x, y, width, height);
-		textField.setFont(labelFont);
-		con.add(textField);
-		return textField;
-	}
-
-	private JPasswordField addPasswordField(Container con, int x, int y, int width, int height) {
-		JPasswordField passwordField = new JPasswordField();
-		passwordField.setBounds(x, y, width, height);
-		passwordField.setFont(labelFont);
-		con.add(passwordField);
-		return passwordField;
-	}
-
-	private String[] buildYears() {
-		String[] years = new String[91];
-		for (int i = 0; i < years.length; i++) {
-			years[i] = String.valueOf(1930 + i);
-		}
-		return years;
-	}
-
-	private void Clock() {
-		Thread clock = new Thread() {
+	private JPanel buildContent() {
+		JPanel content = AppTheme.card();
+		content.setLayout(new BorderLayout(0, 18));
+		content.add(buildHeaderRow(), BorderLayout.NORTH);
+		content.add(buildFormScrollPane(), BorderLayout.CENTER);
+		content.add(buildActions(), BorderLayout.SOUTH);
+		content.addComponentListener(new ComponentAdapter() {
 			@Override
-			public void run() {
-				try {
-					while (true) {
-						Calendar cal = new GregorianCalendar();
-						int day = cal.get(Calendar.DAY_OF_MONTH);
-						int currentMonth = cal.get(Calendar.MONTH) + 1;
-						int currentYear = cal.get(Calendar.YEAR);
-						int second = cal.get(Calendar.SECOND);
-						int minute = cal.get(Calendar.MINUTE);
-						int hour = cal.get(Calendar.HOUR);
-						lblClock.setText("Time " + hour + " : " + minute + " : " + second + " Date " + currentYear
-								+ " / " + currentMonth + " / " + day);
-						sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
+			public void componentResized(ComponentEvent event) {
+				updateSectionLayout(content.getWidth() < 900);
 			}
-		};
-		clock.start();
+		});
+		return content;
+	}
+
+	private JPanel buildHeaderRow() {
+		JPanel header = new JPanel(new BorderLayout(12, 0));
+		header.setOpaque(false);
+		header.add(AppTheme.sectionLabel("Sign-Up Details"), BorderLayout.WEST);
+		header.add(AppTheme.clockLabel(), BorderLayout.EAST);
+		return header;
+	}
+
+	private JScrollPane buildFormScrollPane() {
+		sectionsPanel = new JPanel(new GridBagLayout());
+		sectionsPanel.setOpaque(false);
+
+		personalSection = buildPersonalSection();
+		addressSection = buildAddressSection();
+		carSection = buildCarSection();
+		summarySection = buildSummarySection();
+		updateSectionLayout(false);
+
+		JScrollPane scrollPane = new JScrollPane(sectionsPanel);
+		scrollPane.setBorder(BorderFactory.createEmptyBorder());
+		scrollPane.setOpaque(false);
+		scrollPane.getViewport().setOpaque(false);
+		scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+		return scrollPane;
+	}
+
+	private JPanel buildPersonalSection() {
+		JPanel form = new JPanel(new GridBagLayout());
+		form.setOpaque(false);
+
+		firstNameField = addTextField(form, "First Name", 0);
+		middleNameField = addTextField(form, "Middle Name", 1);
+		lastNameField = addTextField(form, "Last Name", 2);
+		emailField = addTextField(form, "Email", 3);
+		mobileField = addMobileRow(form, 4);
+		usernameField = addTextField(form, "Username", 5);
+		passwordField = addPasswordField(form, "Password", 6);
+		repeatPasswordField = addPasswordField(form, "Repeat Password", 7);
+		addGenderRow(form, 8);
+		addBirthdateRow(form, 9);
+
+		return sectionPanel("Customer Profile", form);
+	}
+
+	private JPanel buildAddressSection() {
+		JPanel form = new JPanel(new GridBagLayout());
+		form.setOpaque(false);
+
+		occupationField = addTextField(form, "Occupation", 0);
+		unitField = addTextField(form, "Unit", 1);
+		streetField = addTextField(form, "Street", 2);
+		districtField = addTextField(form, "District", 3);
+		cityField = addTextField(form, "City/Province", 4);
+
+		return sectionPanel("Address and Work Information", form);
+	}
+
+	private JPanel buildCarSection() {
+		JPanel form = new JPanel(new GridBagLayout());
+		form.setOpaque(false);
+
+		plateField = addTextField(form, "Plate Number", 0);
+		brandField = addTextField(form, "Brand", 1);
+		addColorRow(form, 2);
+		addCarTypeRow(form, 3);
+
+		return sectionPanel("Car Profile", form);
+	}
+
+	private JPanel buildSummarySection() {
+		summaryArea = new JTextArea(5, 24);
+		summaryArea.setEditable(false);
+		summaryArea.setLineWrap(true);
+		summaryArea.setWrapStyleWord(true);
+		summaryArea.setFont(AppTheme.BODY_FONT);
+		summaryArea.setForeground(AppTheme.MUTED_TEXT);
+		summaryArea.setBackground(AppTheme.SURFACE_ALT);
+		summaryArea.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(AppTheme.BORDER),
+				BorderFactory.createEmptyBorder(12, 12, 12, 12)));
+		summaryArea.setText("Registration summary will appear here after the form is submitted.");
+
+		JPanel wrapper = new JPanel(new BorderLayout());
+		wrapper.setOpaque(false);
+		wrapper.add(summaryArea, BorderLayout.CENTER);
+		return sectionPanel("Registration Summary", wrapper);
+	}
+
+	private JPanel sectionPanel(String title, JPanel body) {
+		JPanel section = new JPanel(new BorderLayout(0, 12));
+		section.setOpaque(false);
+		section.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(1, 0, 0, 0,
+				AppTheme.BORDER), BorderFactory.createEmptyBorder(14, 0, 4, 0)));
+		section.add(AppTheme.sectionLabel(title), BorderLayout.NORTH);
+		section.add(body, BorderLayout.CENTER);
+		return section;
+	}
+
+	private JTextField addTextField(JPanel form, String labelText, int row) {
+		JTextField field = AppTheme.textField(labelText);
+		field.setColumns(24);
+		addRow(form, labelText, field, row);
+		return field;
+	}
+
+	private JPasswordField addPasswordField(JPanel form, String labelText, int row) {
+		JPasswordField field = AppTheme.passwordField(labelText);
+		field.setColumns(24);
+		addRow(form, labelText, field, row);
+		return field;
+	}
+
+	private void addRow(JPanel form, String labelText, JTextField field, int row) {
+		JLabel label = AppTheme.label(labelText);
+		label.setLabelFor(field);
+		form.add(label, labelConstraints(row));
+		form.add(field, fieldConstraints(row));
+	}
+
+	private JTextField addMobileRow(JPanel form, int row) {
+		JTextField field = AppTheme.textField("Mobile Number");
+		field.setColumns(18);
+
+		JPanel mobilePanel = new JPanel(new BorderLayout(8, 0));
+		mobilePanel.setOpaque(false);
+		JLabel prefixLabel = AppTheme.label("+63");
+		prefixLabel.setForeground(AppTheme.MUTED_TEXT);
+		mobilePanel.add(prefixLabel, BorderLayout.WEST);
+		mobilePanel.add(field, BorderLayout.CENTER);
+
+		addComponentRow(form, "Mobile Number", mobilePanel, row);
+		return field;
+	}
+
+	private void addGenderRow(JPanel form, int row) {
+		maleButton = new JRadioButton("Male");
+		femaleButton = new JRadioButton("Female");
+		maleButton.setOpaque(false);
+		femaleButton.setOpaque(false);
+		maleButton.setSelected(true);
+		maleButton.setActionCommand("male");
+		femaleButton.setActionCommand("female");
+
+		genderGroup = new ButtonGroup();
+		genderGroup.add(maleButton);
+		genderGroup.add(femaleButton);
+
+		JPanel genderPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		genderPanel.setOpaque(false);
+		genderPanel.add(maleButton);
+		genderPanel.add(femaleButton);
+		addComponentRow(form, "Gender", genderPanel, row);
+	}
+
+	private void addBirthdateRow(JPanel form, int row) {
+		monthBox = comboBox("Birth Month",
+				new String[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov",
+						"Dec" });
+		dayBox = comboBox("Birth Day", buildDays());
+		yearBox = comboBox("Birth Year", AppOptions.birthYearsThroughCurrentYear());
+
+		JPanel birthdatePanel = new JPanel(new GridBagLayout());
+		birthdatePanel.setOpaque(false);
+		birthdatePanel.add(monthBox, comboConstraints(0));
+		birthdatePanel.add(dayBox, comboConstraints(1));
+		birthdatePanel.add(yearBox, comboConstraints(2));
+		addComponentRow(form, "Birthdate", birthdatePanel, row);
+	}
+
+	private void addColorRow(JPanel form, int row) {
+		colorField = AppTheme.textField("Vehicle Color RGB");
+		colorField.setColumns(12);
+		colorButton = AppTheme.secondaryButton("Choose Color");
+		colorButton.addActionListener(this);
+
+		colorPreview = new JLabel(" ");
+		colorPreview.setOpaque(true);
+		colorPreview.setBackground(Color.WHITE);
+		colorPreview.setPreferredSize(new Dimension(34, 34));
+		colorPreview.setBorder(BorderFactory.createLineBorder(AppTheme.BORDER));
+
+		JPanel colorPanel = new JPanel(new GridBagLayout());
+		colorPanel.setOpaque(false);
+
+		GridBagConstraints fieldConstraints = comboConstraints(0);
+		fieldConstraints.weightx = 1;
+		colorPanel.add(colorField, fieldConstraints);
+
+		GridBagConstraints buttonConstraints = comboConstraints(1);
+		buttonConstraints.weightx = 0;
+		colorPanel.add(colorButton, buttonConstraints);
+
+		GridBagConstraints previewConstraints = comboConstraints(2);
+		previewConstraints.weightx = 0;
+		colorPanel.add(colorPreview, previewConstraints);
+
+		addComponentRow(form, "Color", colorPanel, row);
+	}
+
+	private void addCarTypeRow(JPanel form, int row) {
+		carTypeBox = comboBox("Type of Car", AppOptions.carTypes());
+		addComponentRow(form, "Type of Car", carTypeBox, row);
+	}
+
+	private void addComponentRow(JPanel form, String labelText, java.awt.Component component, int row) {
+		JLabel label = AppTheme.label(labelText);
+		label.setLabelFor(component);
+		form.add(label, labelConstraints(row));
+		form.add(component, fieldConstraints(row));
+	}
+
+	private JComboBox<String> comboBox(String accessibleName, String[] values) {
+		JComboBox<String> comboBox = new JComboBox<String>(values);
+		comboBox.setFont(AppTheme.BODY_FONT);
+		comboBox.setForeground(AppTheme.TEXT);
+		comboBox.setBackground(Color.WHITE);
+		comboBox.getAccessibleContext().setAccessibleName(accessibleName);
+		return comboBox;
+	}
+
+	private JPanel buildActions() {
+		JPanel footer = new JPanel(new BorderLayout(12, 0));
+		footer.setOpaque(false);
+		footer.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+
+		JPanel statusPanel = new JPanel(new GridBagLayout());
+		statusPanel.setOpaque(false);
+
+		termsBox = new JCheckBox("Accept Terms and Conditions");
+		termsBox.setOpaque(false);
+		statusPanel.add(termsBox, footerConstraints(0));
+
+		statusLabel = AppTheme.label("Complete all required fields to create your customer account.");
+		statusLabel.setForeground(AppTheme.MUTED_TEXT);
+		statusPanel.add(statusLabel, footerConstraints(1));
+		footer.add(statusPanel, BorderLayout.CENTER);
+
+		JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+		actions.setOpaque(false);
+
+		backButton = AppTheme.secondaryButton("Back to Login");
+		resetButton = AppTheme.secondaryButton("Reset");
+		submitButton = AppTheme.primaryButton("Submit");
+
+		backButton.addActionListener(this);
+		resetButton.addActionListener(this);
+		submitButton.addActionListener(this);
+
+		actions.add(backButton);
+		actions.add(resetButton);
+		actions.add(submitButton);
+		footer.add(actions, BorderLayout.EAST);
+		return footer;
+	}
+
+	private GridBagConstraints footerConstraints(int row) {
+		GridBagConstraints constraints = new GridBagConstraints();
+		constraints.gridx = 0;
+		constraints.gridy = row;
+		constraints.weightx = 1;
+		constraints.fill = GridBagConstraints.HORIZONTAL;
+		constraints.anchor = GridBagConstraints.WEST;
+		constraints.insets = new Insets(row == 0 ? 0 : 4, 0, 0, 0);
+		return constraints;
+	}
+
+	private void updateSectionLayout(boolean compact) {
+		if (sectionsPanel.getComponentCount() > 0 && compactLayout == compact) {
+			return;
+		}
+
+		compactLayout = compact;
+		sectionsPanel.removeAll();
+		sectionsPanel.add(personalSection, sectionConstraints(0, 0, compact ? 1 : 2, false));
+
+		if (compact) {
+			sectionsPanel.add(addressSection, sectionConstraints(0, 1, 1, false));
+			sectionsPanel.add(carSection, sectionConstraints(0, 2, 1, false));
+			sectionsPanel.add(summarySection, sectionConstraints(0, 3, 1, false));
+		} else {
+			sectionsPanel.add(addressSection, sectionConstraints(0, 1, 1, true));
+			sectionsPanel.add(carSection, sectionConstraints(1, 1, 1, false));
+			sectionsPanel.add(summarySection, sectionConstraints(0, 2, 2, false));
+		}
+
+		sectionsPanel.revalidate();
+		sectionsPanel.repaint();
+	}
+
+	private GridBagConstraints labelConstraints(int row) {
+		GridBagConstraints constraints = AppTheme.constraints(0, row);
+		constraints.anchor = GridBagConstraints.EAST;
+		constraints.fill = GridBagConstraints.NONE;
+		constraints.weightx = 0;
+		constraints.insets = new Insets(6, 0, 6, 12);
+		return constraints;
+	}
+
+	private GridBagConstraints fieldConstraints(int row) {
+		GridBagConstraints constraints = AppTheme.constraints(1, row);
+		constraints.weightx = 1;
+		constraints.insets = new Insets(6, 0, 6, 0);
+		return constraints;
+	}
+
+	private GridBagConstraints comboConstraints(int column) {
+		GridBagConstraints constraints = new GridBagConstraints();
+		constraints.gridx = column;
+		constraints.gridy = 0;
+		constraints.weightx = 1;
+		constraints.fill = GridBagConstraints.HORIZONTAL;
+		constraints.insets = new Insets(0, column == 0 ? 0 : 8, 0, 0);
+		return constraints;
+	}
+
+	private GridBagConstraints sectionConstraints(int column, int row, int gridWidth, boolean rightGap) {
+		GridBagConstraints constraints = new GridBagConstraints();
+		constraints.gridx = column;
+		constraints.gridy = row;
+		constraints.gridwidth = gridWidth;
+		constraints.weightx = 1;
+		constraints.weighty = 0;
+		constraints.fill = GridBagConstraints.BOTH;
+		constraints.anchor = GridBagConstraints.NORTHWEST;
+		constraints.insets = new Insets(0, 0, 18, rightGap ? 18 : 0);
+		return constraints;
+	}
+
+	private String[] buildDays() {
+		String[] days = new String[31];
+		for (int index = 0; index < days.length; index++) {
+			days[index] = String.valueOf(index + 1);
+		}
+		return days;
 	}
 
 	@Override
-	public void actionPerformed(ActionEvent e) {
-		if (e.getSource() == col) {
-			Color selectedColor = JColorChooser.showDialog(this, "Choose Car Color", Color.WHITE);
-			if (selectedColor != null) {
-				tcolor.setText(selectedColor.getRed() + "," + selectedColor.getGreen() + "," + selectedColor.getBlue());
-			}
-			return;
-		}
-
-		if (e.getSource() == reset1) {
+	public void actionPerformed(ActionEvent event) {
+		Object source = event.getSource();
+		if (source == colorButton) {
+			chooseColor();
+		} else if (source == resetButton) {
 			clearForm();
-			return;
-		}
-
-		if (e.getSource() == sub) {
+		} else if (source == submitButton) {
 			submitRegistration();
+		} else if (source == backButton) {
+			openLogin();
+		}
+	}
+
+	private void chooseColor() {
+		Color selectedColor = JColorChooser.showDialog(this, "Choose Car Color", colorPreview.getBackground());
+		if (selectedColor != null) {
+			colorField.setText(selectedColor.getRed() + "," + selectedColor.getGreen() + ","
+					+ selectedColor.getBlue());
+			colorPreview.setBackground(selectedColor);
 		}
 	}
 
 	private void submitRegistration() {
-		String password = new String(tpass.getPassword());
-		String repeatPassword = new String(trpass.getPassword());
+		String password = new String(passwordField.getPassword());
+		String repeatPassword = new String(repeatPasswordField.getPassword());
+		String validationError = validateForm(password, repeatPassword);
 
-		if (!term.isSelected()) {
-			JOptionPane.showMessageDialog(this, "Please accept the terms and conditions.");
-			return;
-		}
-
-		if (isBlank(tfnam) || isBlank(tmnam) || isBlank(tlnam) || isBlank(temail) || isBlank(tmno) || isBlank(tunam)
-				|| password.trim().isEmpty() || repeatPassword.trim().isEmpty() || isBlank(toccupation) || isBlank(tunit)
-				|| isBlank(tstreet) || isBlank(tdistrict) || isBlank(tcity) || isBlank(tplatno) || isBlank(tbrand)
-				|| isBlank(tcolor) || carType.getSelectedIndex() == 0) {
-			JOptionPane.showMessageDialog(this, "Please fill up all required fields.");
-			return;
-		}
-
-		if (!password.equals(repeatPassword)) {
-			JOptionPane.showMessageDialog(this, "Passwords do not match.");
+		if (validationError != null) {
+			showStatus(validationError);
 			return;
 		}
 
 		if (conn == null) {
-			JOptionPane.showMessageDialog(this, "Database connection is not available.");
+			AppTheme.showError(this, "Database connection is not available. Check the MySQL container or local service.",
+					null);
 			return;
 		}
 
-		String birthdate = month.getSelectedItem() + " " + date.getSelectedItem() + ", " + year.getSelectedItem();
+		String birthdate = monthBox.getSelectedItem() + " " + dayBox.getSelectedItem() + ", "
+				+ yearBox.getSelectedItem();
 		String address = buildAddress();
+		String sql = "insert into useraccount "
+				+ "(FirstName,MiddleName,LastName,Email,Password,RepeatPassword,Gender,Birthdate,Occupation,Address,"
+				+ "MobileNumber,Username,PlateNumber,Brand,Color,Type) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-		try {
-			String query = "insert into useraccount "
-					+ "(FirstName,MiddleName,LastName,Email,Password,RepeatPassword,Gender,Birthdate,Occupation,Address,"
-					+ "MobileNumber,Username,PlateNumber,Brand,Color,Type) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-			PreparedStatement ps = conn.prepareStatement(query);
-			ps.setString(1, tfnam.getText().trim());
-			ps.setString(2, tmnam.getText().trim());
-			ps.setString(3, tlnam.getText().trim());
-			ps.setString(4, temail.getText().trim());
-			ps.setString(5, password);
-			ps.setString(6, repeatPassword);
-			ps.setString(7, gengp.getSelection().getActionCommand());
-			ps.setString(8, birthdate);
-			ps.setString(9, toccupation.getText().trim());
-			ps.setString(10, address);
-			ps.setString(11, tmno.getText().trim());
-			ps.setString(12, tunam.getText().trim());
-			ps.setString(13, tplatno.getText().trim());
-			ps.setString(14, tbrand.getText().trim());
-			ps.setString(15, tcolor.getText().trim());
-			ps.setString(16, (String) carType.getSelectedItem());
-			ps.executeUpdate();
-			ps.close();
+		try (PreparedStatement statement = conn.prepareStatement(sql)) {
+			statement.setString(1, firstNameField.getText().trim());
+			statement.setString(2, middleNameField.getText().trim());
+			statement.setString(3, lastNameField.getText().trim());
+			statement.setString(4, emailField.getText().trim());
+			statement.setString(5, password);
+			statement.setString(6, repeatPassword);
+			statement.setString(7, genderGroup.getSelection().getActionCommand());
+			statement.setString(8, birthdate);
+			statement.setString(9, occupationField.getText().trim());
+			statement.setString(10, address);
+			statement.setString(11, mobileField.getText().trim());
+			statement.setString(12, usernameField.getText().trim());
+			statement.setString(13, plateField.getText().trim());
+			statement.setString(14, brandField.getText().trim());
+			statement.setString(15, colorField.getText().trim());
+			statement.setString(16, (String) carTypeBox.getSelectedItem());
+			statement.executeUpdate();
 
-			tout.setText("CUSTOMER INFORMATION\nName: " + tfnam.getText().trim() + " " + tmnam.getText().trim() + " "
-					+ tlnam.getText().trim() + "\nOccupation: " + toccupation.getText().trim() + "\nAddress: "
-					+ address + "\n\nCAR INFORMATION\nPlate #: " + tplatno.getText().trim() + "\nBrand: "
-					+ tbrand.getText().trim() + "\nColor: " + tcolor.getText().trim() + "\nType: "
-					+ carType.getSelectedItem());
-
+			summaryArea.setForeground(AppTheme.TEXT);
+			summaryArea.setText("Customer saved:\n" + firstNameField.getText().trim() + " "
+					+ middleNameField.getText().trim() + " " + lastNameField.getText().trim() + "\n"
+					+ emailField.getText().trim() + "\n" + address + "\n\nVehicle:\n"
+					+ plateField.getText().trim() + " - " + brandField.getText().trim() + "\n"
+					+ carTypeBox.getSelectedItem());
 			JOptionPane.showMessageDialog(this, "Registration successfully saved.");
-			login app = new login();
-			app.setTitle("User Login");
-			app.setSize(450, 600);
-			app.setVisible(true);
-			app.setLocationRelativeTo(null);
-			dispose();
-		} catch (Exception ex) {
-			JOptionPane.showMessageDialog(this, "Unable to save registration: " + ex.getMessage());
+			openLogin();
+		} catch (Exception error) {
+			AppTheme.showError(this, "Unable to save registration.", error);
 		}
 	}
 
-	private boolean isBlank(JTextField textField) {
-		return textField.getText().trim().isEmpty();
+	private String validateForm(String password, String repeatPassword) {
+		String error = FormValidator.firstError(FormValidator.required(firstNameField.getText(), "First name"),
+				FormValidator.required(middleNameField.getText(), "Middle name"),
+				FormValidator.required(lastNameField.getText(), "Last name"),
+				FormValidator.required(emailField.getText(), "Email"), FormValidator.email(emailField.getText()),
+				FormValidator.required(mobileField.getText(), "Mobile number"),
+				FormValidator.required(usernameField.getText(), "Username"),
+				FormValidator.required(password, "Password"),
+				FormValidator.required(repeatPassword, "Repeat password"),
+				FormValidator.required(occupationField.getText(), "Occupation"),
+				FormValidator.required(unitField.getText(), "Unit"), FormValidator.required(streetField.getText(),
+						"Street"),
+				FormValidator.required(districtField.getText(), "District"),
+				FormValidator.required(cityField.getText(), "City/Province"),
+				FormValidator.required(plateField.getText(), "Plate number"),
+				FormValidator.required(brandField.getText(), "Brand"),
+				FormValidator.required(colorField.getText(), "Color"));
+
+		if (error != null) {
+			return error;
+		}
+		if (!password.equals(repeatPassword)) {
+			return "Passwords do not match.";
+		}
+		if (carTypeBox.getSelectedIndex() == 0) {
+			return "Choose a type of car.";
+		}
+		if (!termsBox.isSelected()) {
+			return "Accept the terms and conditions to continue.";
+		}
+		return null;
 	}
 
 	private String buildAddress() {
-		return tunit.getText().trim() + " " + tstreet.getText().trim() + " " + tdistrict.getText().trim()
-				+ " District, " + tcity.getText().trim();
+		return unitField.getText().trim() + " " + streetField.getText().trim() + " "
+				+ districtField.getText().trim() + " District, " + cityField.getText().trim();
+	}
+
+	private void showStatus(String message) {
+		statusLabel.setText(message);
+		summaryArea.setForeground(AppTheme.DANGER);
+		summaryArea.setText(message);
 	}
 
 	private void clearForm() {
-		tfnam.setText("");
-		tmnam.setText("");
-		tlnam.setText("");
-		tmno.setText("");
-		temail.setText("");
-		tunam.setText("");
-		tpass.setText("");
-		trpass.setText("");
-		tplatno.setText("");
-		tbrand.setText("");
-		tcolor.setText("");
-		toccupation.setText("");
-		tunit.setText("");
-		tstreet.setText("");
-		tdistrict.setText("");
-		tcity.setText("");
-		tout.setText("");
-		term.setSelected(false);
-		male.setSelected(true);
-		date.setSelectedIndex(0);
-		month.setSelectedIndex(0);
-		year.setSelectedIndex(0);
-		carType.setSelectedIndex(0);
+		firstNameField.setText("");
+		middleNameField.setText("");
+		lastNameField.setText("");
+		mobileField.setText("");
+		emailField.setText("");
+		usernameField.setText("");
+		passwordField.setText("");
+		repeatPasswordField.setText("");
+		plateField.setText("");
+		brandField.setText("");
+		colorField.setText("");
+		occupationField.setText("");
+		unitField.setText("");
+		streetField.setText("");
+		districtField.setText("");
+		cityField.setText("");
+		termsBox.setSelected(false);
+		maleButton.setSelected(true);
+		dayBox.setSelectedIndex(0);
+		monthBox.setSelectedIndex(0);
+		yearBox.setSelectedIndex(0);
+		carTypeBox.setSelectedIndex(0);
+		colorPreview.setBackground(Color.WHITE);
+		statusLabel.setText("Complete all required fields to create your customer account.");
+		summaryArea.setForeground(AppTheme.MUTED_TEXT);
+		summaryArea.setText("Registration summary will appear here after the form is submitted.");
+		firstNameField.requestFocusInWindow();
+	}
+
+	private void openLogin() {
+		login app = new login();
+		AppTheme.showFrame(app, "User Login", 520, 620);
+		dispose();
 	}
 
 	public static void main(String[] args) {
-		reg app = new reg();
-		app.setTitle("Registration Form");
-		app.setSize(1000, 750);
-		app.setVisible(true);
-		app.setLocationRelativeTo(null);
-		app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		SwingUtilities.invokeLater(() -> {
+			reg app = new reg();
+			app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			AppTheme.showFrame(app, "Registration Form", 1000, 750);
+		});
 	}
 }

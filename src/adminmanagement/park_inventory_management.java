@@ -1,235 +1,203 @@
 package adminmanagement;
 
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-
 import DatabaseConnection.ConnectionDB;
+import app.AppTheme;
 
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
 
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableModel;
+
+/**
+ * Admin inventory screen for viewing and searching parking reservation records.
+ */
 public class park_inventory_management extends JFrame implements ActionListener {
-	
-	public JLabel id, cus, tr, lrd;
-	public JTextField t1, total, date;
-	public JButton search, add1, logout, menu1;
-	public JTable table;
-	public Connection conn = null;
-	public Statement st = null;
-	public PreparedStatement ps = null;
-	public ResultSet rs = null;
-	public DefaultTableModel dm = null;
-	public ResultSetMetaData rsmd = null;
-	Font f1 = new Font("Times New Roman",Font.PLAIN, 15);
-	Font f2 = new Font("Times New Roman",Font.BOLD, 20);
-	Font f3 = new Font("Times New Roman", Font.PLAIN,15);
-	Color c1 = Color.WHITE;
-	Color c2 = Color.RED;
-	Color c3 = Color.MAGENTA;
-	
-	private JLabel lblClock;
-	private ImageIcon icon;
-	private JLabel label;
-	private JLabel photo;
-	private JLabel title;
-	
-	public void Clock() {
-		Thread clock = new Thread() {
+	private JTextField searchField;
+	private JButton searchButton;
+	private JButton resetButton;
+	private JButton addButton;
+	private JButton logoutButton;
+	private JButton menuButton;
+	private JTable table;
+	private JLabel totalLabel;
+	private JLabel latestLabel;
+	private JLabel statusLabel;
+	private Connection conn;
+
+	public park_inventory_management() {
+		AppTheme.install();
+		conn = ConnectionDB.getConnection();
+		setContentPane(AppTheme.shell("Parking Inventory", "Track customer reservations, vehicles, and slot usage.",
+				buildContent()));
+		loadInventory(null);
+	}
+
+	private JPanel buildContent() {
+		JPanel content = AppTheme.card();
+		content.setLayout(new BorderLayout(0, 16));
+		content.add(buildToolbar(), BorderLayout.NORTH);
+		content.add(buildTable(), BorderLayout.CENTER);
+		content.add(buildFooter(), BorderLayout.SOUTH);
+		return content;
+	}
+
+	private JPanel buildToolbar() {
+		JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+		toolbar.setOpaque(false);
+
+		menuButton = AppTheme.secondaryButton("Back to Menu");
+		logoutButton = AppTheme.dangerButton("Logout");
+		addButton = AppTheme.primaryButton("Add Reservation");
+		searchField = AppTheme.textField("Search inventory");
+		searchField.setColumns(22);
+		searchButton = AppTheme.primaryButton("Search");
+		resetButton = AppTheme.secondaryButton("Reset");
+
+		menuButton.addActionListener(this);
+		logoutButton.addActionListener(this);
+		addButton.addActionListener(this);
+		searchButton.addActionListener(this);
+		resetButton.addActionListener(this);
+		searchField.addActionListener(this);
+
+		toolbar.add(menuButton);
+		toolbar.add(logoutButton);
+		toolbar.add(addButton);
+		toolbar.add(AppTheme.label("Search"));
+		toolbar.add(searchField);
+		toolbar.add(searchButton);
+		toolbar.add(resetButton);
+		return toolbar;
+	}
+
+	private JScrollPane buildTable() {
+		table = new JTable();
+		AppTheme.styleResponsiveTable(table);
+		return new JScrollPane(table);
+	}
+
+	private JPanel buildFooter() {
+		JPanel footer = new JPanel(new BorderLayout(14, 0));
+		footer.setOpaque(false);
+
+		JPanel metrics = new JPanel(new GridLayout(1, 2, 12, 0));
+		metrics.setOpaque(false);
+		totalLabel = AppTheme.sectionLabel("Total Reservations: 0");
+		latestLabel = AppTheme.sectionLabel("Latest Reservation: N/A");
+		metrics.add(totalLabel);
+		metrics.add(latestLabel);
+
+		statusLabel = AppTheme.label("Loading inventory...");
+		statusLabel.setForeground(AppTheme.MUTED_TEXT);
+
+		footer.add(metrics, BorderLayout.CENTER);
+		footer.add(statusLabel, BorderLayout.SOUTH);
+		return footer;
+	}
+
+	private void loadInventory(String filter) {
+		DefaultTableModel model = new DefaultTableModel(columnNames(), 0) {
 			@Override
-			public void run() {
-				try {
-					while (true) {
-						Calendar cal = new GregorianCalendar();
-						int day = cal.get(Calendar.DAY_OF_MONTH);
-						int month = cal.get(Calendar.MONTH);
-						int year = cal.get(Calendar.YEAR);
-
-						int second = cal.get(Calendar.SECOND);
-						int minute = cal.get(Calendar.MINUTE);
-						int hour = cal.get(Calendar.HOUR);
-
-						lblClock.setText("Time " + hour + " : " + minute + " : " + second + " Date " + year + " / "
-								+ (month + 1) + " / " + day);
-						sleep(1000);
-					}
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+			public boolean isCellEditable(int row, int column) {
+				return false;
 			}
 		};
-		clock.start();
-	}	
-	
-public park_inventory_management() {
-	conn = ConnectionDB.getConnection();
-	icon = new ImageIcon("src/m.jpg");
-	
-	Container con = getContentPane();
-	con.setLayout(null);
-	
-	photo= new JLabel() {
-		  public void paintComponent(Graphics g) {
-		    g.drawImage(icon.getImage(), 0, 0, null);
-		    super.paintComponent(g);
-		  }
-		};
-		
-		photo.setOpaque(false);
-		con.add(photo);
-		photo.setBounds(10,10,100,100);
 
-	
-	con.add(lblClock = new JLabel(""));
-	lblClock.setBounds(730, 10, 230, 30);
-	lblClock.setFont(f3);
-	
-	title = new JLabel ("Archim's TechCorner");
-	title.setBounds(100,-10,200,100);
-	con.add(title);
-	
-	id = new JLabel ("ID:");
-	id.setFont(f2);
-	cus = new JLabel ("--------------------CUSTOMER INFORMATION---------------------");
-	cus.setFont(f2);
-	tr = new JLabel ("Total Reservation");
-	lrd = new JLabel ("Last Reservation Date");
-	t1 = new JTextField ();
-	total = new JTextField ();
-	date = new JTextField ();
-	
-	tr.setFont(f2);
-	lrd.setFont(f2);
-	
-	
-	t1.setEditable(false);
-	t1.setBackground(c1);
-	t1.setFont(f1);
-	total.setEditable(false);
-	total.setBackground(c2);
-	total.setFont(f2);
-	total.setForeground(c1);
-	date.setEditable(false);
-	date.setBackground(c3);
-	date.setFont(f2);
-	date.setForeground(c1);
-	
-	search = new JButton ("Search");
-	add1 = new JButton ("Add");
-	logout = new JButton ("LOGOUT");
-	menu1 = new JButton ("Back to Menu");
-	search.addActionListener(this);
-	add1.addActionListener(this);
-	logout.addActionListener(this);
-	menu1.addActionListener(this);
-	
-	table = new JTable ();
-	
-	id.setBounds(40,100,100,20);
-	cus.setBounds(400,120,1000,20);
-	tr.setBounds(120,250,300,20);
-	lrd.setBounds(100,450,300,20);
-	t1.setBounds(120,100,200,20);
-	total.setBounds(40,300,300,100);
-	date.setBounds(40,500,300,100);
-	search.setBounds(60,180,100,30);
-	add1.setBounds(200,180,100,30);
-	table.setBounds(400,150,550,450);
-	logout.setBounds(850,50,100,40);
-	menu1.setBounds(690,50,130,40);
-	
-	
-	con.add(id);
-	con.add(cus);
-	con.add(lrd);
-	con.add(tr);
-	con.add(t1);
-	con.add(total);
-	con.add(date);
-	con.add(search);
-	con.add(add1);
-	con.add(table);
-	con.add(logout);
-	con.add(menu1);
-	
-	 Clock();
-	
-}
+		if (conn == null) {
+			table.setModel(model);
+			statusLabel.setText("Database connection is not available.");
+			return;
+		}
 
-@Override
-public void actionPerformed(ActionEvent e) {
-	// TODO Auto-generated method stub
-	//paglogout
-			if (e.getSource() == logout) {
-				int dialog = JOptionPane.showConfirmDialog(null, "Are you sure you want to LOGOUT?", "WARNING",
-						JOptionPane.YES_NO_OPTION);
-				if (dialog == JOptionPane.YES_OPTION) {
-					 //pabalik ng login
-					        login app = new login();
-					        app.setTitle("Admin Login");
-					        app.setVisible(true);
-					        app.setSize(450,600); 
-					        app.setVisible(true);
-					    	app.setLocationRelativeTo(null);
-					        park_inventory_management.this.dispose();
-				}
-				if (dialog == JOptionPane.NO_OPTION) {
-					park_inventory_management.this.show();
+		String sql = "select ID,FullName,Email,Gender,MobileNumber,Birthdate,PlateNumber,Brand,Color,Type,DOR,DOP,"
+				+ "SlotNumber,THP,TP,TD from inventory";
+		boolean hasFilter = filter != null && !filter.trim().isEmpty();
+		if (hasFilter) {
+			sql += " where ID like ? or FullName like ? or Email like ? or PlateNumber like ? or SlotNumber like ?";
+		}
+		sql += " order by ID";
+
+		try (PreparedStatement statement = conn.prepareStatement(sql)) {
+			if (hasFilter) {
+				String searchValue = "%" + filter.trim() + "%";
+				for (int index = 1; index <= 5; index++) {
+					statement.setString(index, searchValue);
 				}
 			}
-			
-			//pabalik ng menu
 
-			//pagbalik sa menu
-		    if (e.getSource() == menu1) {
-		    	//menu
-		    	  menu app = new menu();
-			        app.setTitle("Admin Menu");
-			        app.setVisible(true);
-			        app.setSize(1000,400); 
-			        app.setVisible(true);
-			    	app.setLocationRelativeTo(null);
-			    	park_inventory_management.this.dispose();
-		    }
-	
-		  //add button
-			if  (e.getSource() == add1) {
-				parking_inventory_management_add_button app = new parking_inventory_management_add_button();
-					app.setTitle("Parking Inventory Management");
-					app.setVisible(true);
-					app.setSize(1200, 750);
-					app.setVisible(true);
-					app.setLocationRelativeTo(null);
-					park_inventory_management.this.dispose();
+			try (ResultSet resultSet = statement.executeQuery()) {
+				int rows = 0;
+				String latestReservation = "N/A";
+				while (resultSet.next()) {
+					latestReservation = resultSet.getString("DOR");
+					model.addRow(new Object[] { resultSet.getString("ID"), resultSet.getString("FullName"),
+							resultSet.getString("Email"), resultSet.getString("Gender"),
+							resultSet.getString("MobileNumber"), resultSet.getString("Birthdate"),
+							resultSet.getString("PlateNumber"), resultSet.getString("Brand"),
+							resultSet.getString("Color"), resultSet.getString("Type"), resultSet.getString("DOR"),
+							resultSet.getString("DOP"), resultSet.getString("SlotNumber"), resultSet.getString("THP"),
+							resultSet.getString("TP"), resultSet.getString("TD") });
+					rows++;
+				}
+				table.setModel(model);
+				totalLabel.setText("Total Reservations: " + rows);
+				latestLabel.setText("Latest Reservation: " + latestReservation);
+				statusLabel.setText(rows + " inventory record(s) loaded.");
 			}
-		//search button
-			if  (e.getSource() == search){
-			    	
-				 String m = JOptionPane.showInputDialog(null, "Type the ID #", 
-		                "MANALAD", JOptionPane.INFORMATION_MESSAGE);
-				 t1.setText(m);
-			    }	
-		
-		
-		    
-}
+		} catch (Exception error) {
+			table.setModel(model);
+			AppTheme.showError(this, "Unable to load parking inventory.", error);
+			statusLabel.setText("Unable to load parking inventory.");
+		}
+	}
 
+	private String[] columnNames() {
+		return new String[] { "ID", "Full Name", "Email", "Gender", "Mobile #", "Birthdate", "Plate #", "Brand",
+				"Color", "Type", "Reservation Date", "Park Date", "Slot #", "Hours", "Time Park", "Departure" };
+	}
 
+	@Override
+	public void actionPerformed(ActionEvent event) {
+		Object source = event.getSource();
+		if (source == menuButton) {
+			menu app = new menu();
+			AppTheme.showFrame(app, "Admin Menu", 1060, 600);
+			dispose();
+		} else if (source == logoutButton) {
+			login app = new login();
+			AppTheme.showFrame(app, "Admin Login", 540, 640);
+			dispose();
+		} else if (source == addButton) {
+			parking_inventory_management_add_button app = new parking_inventory_management_add_button();
+			AppTheme.showFrame(app, "Add Parking Reservation", 1180, 760);
+			dispose();
+		} else if (source == searchButton || source == searchField) {
+			loadInventory(searchField.getText());
+		} else if (source == resetButton) {
+			searchField.setText("");
+			loadInventory(null);
+		}
+	}
 
-
-static park_inventory_management app = new park_inventory_management();
-public static void main(String[] args) {
-	app.setTitle("Parking Inventory Management");
-	app.setSize(1000, 700);
-	app.setVisible(true);
-	app.setLocationRelativeTo(null);
-	app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-	
-}
+	public static void main(String[] args) {
+		SwingUtilities.invokeLater(() -> {
+			park_inventory_management app = new park_inventory_management();
+			app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			AppTheme.showFrame(app, "Parking Inventory Management", 1120, 720);
+		});
+	}
 }
