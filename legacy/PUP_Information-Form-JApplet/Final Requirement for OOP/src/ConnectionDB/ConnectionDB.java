@@ -5,7 +5,7 @@ public class ConnectionDB {
 static String driver = "com.mysql.cj.jdbc.Driver";
 static String url ="jdbc:mysql://localhost:3306/informationdb";
 static String username = "root";
-static String password = "kakashijirachisohaer";
+static String password = "Qwerty123@";
 public static Connection getConnection(){
  Connection conn=null;
  try{

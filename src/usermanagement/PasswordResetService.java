@@ -136,7 +136,8 @@ public class PasswordResetService {
 			return socket;
 		}
 
-		SSLSocket sslSocket = (SSLSocket) SSLSocketFactory.getDefault().createSocket(socket, config.host, config.port,
+		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		SSLSocket sslSocket = (SSLSocket) factory.createSocket(socket, config.host, config.port,
 				true);
 		sslSocket.setSoTimeout(SOCKET_TIMEOUT_MS);
 		sslSocket.startHandshake();
@@ -331,8 +332,8 @@ public class PasswordResetService {
 		}
 
 		private void startTls(String host, int port) throws IOException {
-			SSLSocket sslSocket = (SSLSocket) SSLSocketFactory.getDefault().createSocket(socket, host, port, true);
-			sslSocket.setSoTimeout(SOCKET_TIMEOUT_MS);
+			SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+			SSLSocket sslSocket = (SSLSocket) factory.createSocket(socket, host, port, true);
 			sslSocket.startHandshake();
 			setSocket(sslSocket);
 		}

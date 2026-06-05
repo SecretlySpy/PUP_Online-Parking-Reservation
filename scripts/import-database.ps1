@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $Root = Resolve-Path (Join-Path $PSScriptRoot '..')
-$Password = if ($env:OPR_DB_PASSWORD) { $env:OPR_DB_PASSWORD } else { 'kakashijirachisohaer' }
+$Password = if ($env:OPR_DB_PASSWORD) { $env:OPR_DB_PASSWORD } else { 'Qwerty123@' }
 $Database = if ($env:OPR_DB_NAME) { $env:OPR_DB_NAME } else { 'onlineparkingreservation' }
 
 Push-Location $Root

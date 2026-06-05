@@ -9,7 +9,7 @@ public final class AppConfig {
 	private static final String DEFAULT_DB_PORT = "3306";
 	private static final String DEFAULT_DB_NAME = "onlineparkingreservation";
 	private static final String DEFAULT_DB_USER = "root";
-	private static final String DEFAULT_DB_PASSWORD = "kakashijirachisohaer";
+	private static final String DEFAULT_DB_PASSWORD = "Qwerty123@";
 
 	private AppConfig() {
 		// Utility class; instances are not needed.

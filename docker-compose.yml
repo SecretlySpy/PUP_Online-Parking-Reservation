@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${OPR_DB_NAME:-onlineparkingreservation}
-      MYSQL_ROOT_PASSWORD: ${OPR_DB_PASSWORD:-kakashijirachisohaer}
+      MYSQL_ROOT_PASSWORD: ${OPR_DB_PASSWORD:-Qwerty123@}
     ports:
       - "${OPR_DB_PORT:-3306}:3306"
     volumes:
@@ -37,7 +37,7 @@ services:
       OPR_DB_PORT: 3306
       OPR_DB_NAME: ${OPR_DB_NAME:-onlineparkingreservation}
       OPR_DB_USER: root
-      OPR_DB_PASSWORD: ${OPR_DB_PASSWORD:-kakashijirachisohaer}
+      OPR_DB_PASSWORD: ${OPR_DB_PASSWORD:-Qwerty123@}
 
 volumes:
   mysql-data:

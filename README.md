@@ -25,7 +25,7 @@ The database connection is controlled by environment variables. If none are set,
 | `OPR_DB_PORT` | `3306` | MySQL port |
 | `OPR_DB_NAME` | `onlineparkingreservation` | Database name |
 | `OPR_DB_USER` | `root` | Database user |
-| `OPR_DB_PASSWORD` | `kakashijirachisohaer` | Database password |
+| `OPR_DB_PASSWORD` | `Qwerty123@` | Database password |
 
 Copy `.env.example` to `.env` when you want Docker Compose to use custom values.
 
