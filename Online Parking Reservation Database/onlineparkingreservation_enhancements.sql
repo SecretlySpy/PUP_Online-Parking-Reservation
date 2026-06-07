@@ -67,3 +67,16 @@ CREATE TABLE IF NOT EXISTS `system_activity` (
   PRIMARY KEY (`activity_id`),
   KEY `idx_system_activity_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
+  `reset_id` int NOT NULL AUTO_INCREMENT,
+  `account_type` varchar(20) NOT NULL,
+  `username` varchar(45) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `used_at` datetime NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`reset_id`),
+  UNIQUE KEY `uk_password_reset_token_hash` (`token_hash`),
+  KEY `idx_password_reset_account` (`account_type`,`username`,`expires_at`,`used_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

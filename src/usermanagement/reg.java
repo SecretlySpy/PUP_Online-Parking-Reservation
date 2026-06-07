@@ -4,6 +4,7 @@ import DatabaseConnection.ConnectionDB;
 import app.AppOptions;
 import app.AppTheme;
 import app.FormValidator;
+import app.PasswordSecurity;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -460,69 +461,77 @@ public class reg extends JFrame implements ActionListener {
 	}
 
 	private void submitRegistration() {
-		String password = new String(passwordField.getPassword());
-		String repeatPassword = new String(repeatPasswordField.getPassword());
-		String validationError = validateForm(password, repeatPassword);
+		char[] password = passwordField.getPassword();
+		char[] repeatPassword = repeatPasswordField.getPassword();
+		try {
+			String validationError = validateForm(password, repeatPassword);
 
-		if (validationError != null) {
-			showStatus(validationError);
-			return;
-		}
+			if (validationError != null) {
+				showStatus(validationError);
+				return;
+			}
 
-		if (conn == null) {
-			AppTheme.showError(this, "Database connection is not available. Check the MySQL container or local service.",
-					null);
-			return;
-		}
+			if (conn == null) {
+				AppTheme.showError(this,
+						"Database connection is not available. Check the MySQL container or local service.", null);
+				return;
+			}
 
-		String birthdate = monthBox.getSelectedItem() + " " + dayBox.getSelectedItem() + ", "
-				+ yearBox.getSelectedItem();
-		String address = buildAddress();
-		String sql = "insert into useraccount "
-				+ "(FirstName,MiddleName,LastName,Email,Password,RepeatPassword,Gender,Birthdate,Occupation,Address,"
-				+ "MobileNumber,Username,PlateNumber,Brand,Color,Type) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+			String birthdate = monthBox.getSelectedItem() + " " + dayBox.getSelectedItem() + ", "
+					+ yearBox.getSelectedItem();
+			String address = buildAddress();
+			String passwordHash = PasswordSecurity.hash(password);
+			String sql = "insert into useraccount "
+					+ "(FirstName,MiddleName,LastName,Email,Password,RepeatPassword,Gender,Birthdate,Occupation,Address,"
+					+ "MobileNumber,Username,PlateNumber,Brand,Color,Type) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
-		try (PreparedStatement statement = conn.prepareStatement(sql)) {
-			statement.setString(1, firstNameField.getText().trim());
-			statement.setString(2, middleNameField.getText().trim());
-			statement.setString(3, lastNameField.getText().trim());
-			statement.setString(4, emailField.getText().trim());
-			statement.setString(5, password);
-			statement.setString(6, repeatPassword);
-			statement.setString(7, genderGroup.getSelection().getActionCommand());
-			statement.setString(8, birthdate);
-			statement.setString(9, occupationField.getText().trim());
-			statement.setString(10, address);
-			statement.setString(11, mobileField.getText().trim());
-			statement.setString(12, usernameField.getText().trim());
-			statement.setString(13, plateField.getText().trim());
-			statement.setString(14, brandField.getText().trim());
-			statement.setString(15, colorField.getText().trim());
-			statement.setString(16, (String) carTypeBox.getSelectedItem());
-			statement.executeUpdate();
+			try (PreparedStatement statement = conn.prepareStatement(sql)) {
+				statement.setString(1, firstNameField.getText().trim());
+				statement.setString(2, middleNameField.getText().trim());
+				statement.setString(3, lastNameField.getText().trim());
+				statement.setString(4, emailField.getText().trim());
+				statement.setString(5, passwordHash);
+				statement.setString(6, passwordHash);
+				statement.setString(7, genderGroup.getSelection().getActionCommand());
+				statement.setString(8, birthdate);
+				statement.setString(9, occupationField.getText().trim());
+				statement.setString(10, address);
+				statement.setString(11, mobileField.getText().trim());
+				statement.setString(12, usernameField.getText().trim());
+				statement.setString(13, plateField.getText().trim());
+				statement.setString(14, brandField.getText().trim());
+				statement.setString(15, colorField.getText().trim());
+				statement.setString(16, (String) carTypeBox.getSelectedItem());
+				statement.executeUpdate();
 
-			summaryArea.setForeground(AppTheme.TEXT);
-			summaryArea.setText("Customer saved:\n" + firstNameField.getText().trim() + " "
-					+ middleNameField.getText().trim() + " " + lastNameField.getText().trim() + "\n"
-					+ emailField.getText().trim() + "\n" + address + "\n\nVehicle:\n"
-					+ plateField.getText().trim() + " - " + brandField.getText().trim() + "\n"
-					+ carTypeBox.getSelectedItem());
-			JOptionPane.showMessageDialog(this, "Registration successfully saved.");
-			openLogin();
+				summaryArea.setForeground(AppTheme.TEXT);
+				summaryArea.setText("Customer saved:\n" + firstNameField.getText().trim() + " "
+						+ middleNameField.getText().trim() + " " + lastNameField.getText().trim() + "\n"
+						+ emailField.getText().trim() + "\n" + address + "\n\nVehicle:\n"
+						+ plateField.getText().trim() + " - " + brandField.getText().trim() + "\n"
+						+ carTypeBox.getSelectedItem());
+				JOptionPane.showMessageDialog(this, "Registration successfully saved.");
+				openLogin();
+			} catch (Exception error) {
+				AppTheme.showError(this, "Unable to save registration.", error);
+			}
 		} catch (Exception error) {
-			AppTheme.showError(this, "Unable to save registration.", error);
+			AppTheme.showError(this, "Unable to secure the registration password.", error);
+		} finally {
+			PasswordSecurity.clear(password);
+			PasswordSecurity.clear(repeatPassword);
 		}
 	}
 
-	private String validateForm(String password, String repeatPassword) {
+	private String validateForm(char[] password, char[] repeatPassword) {
 		String error = FormValidator.firstError(FormValidator.required(firstNameField.getText(), "First name"),
 				FormValidator.required(middleNameField.getText(), "Middle name"),
 				FormValidator.required(lastNameField.getText(), "Last name"),
 				FormValidator.required(emailField.getText(), "Email"), FormValidator.email(emailField.getText()),
 				FormValidator.required(mobileField.getText(), "Mobile number"),
 				FormValidator.required(usernameField.getText(), "Username"),
-				FormValidator.required(password, "Password"),
-				FormValidator.required(repeatPassword, "Repeat password"),
+				password.length == 0 ? "Password is required." : null,
+				repeatPassword.length == 0 ? "Repeat password is required." : null,
 				FormValidator.required(occupationField.getText(), "Occupation"),
 				FormValidator.required(unitField.getText(), "Unit"), FormValidator.required(streetField.getText(),
 						"Street"),
@@ -535,7 +544,11 @@ public class reg extends JFrame implements ActionListener {
 		if (error != null) {
 			return error;
 		}
-		if (!password.equals(repeatPassword)) {
+		String strengthError = PasswordSecurity.strengthError(password);
+		if (strengthError != null) {
+			return strengthError;
+		}
+		if (!PasswordSecurity.matches(password, repeatPassword)) {
 			return "Passwords do not match.";
 		}
 		if (carTypeBox.getSelectedIndex() == 0) {

@@ -26,9 +26,9 @@ CREATE TABLE `useraccount` (
   `FirstName` varchar(45) NOT NULL,
   `MiddleName` varchar(45) NOT NULL,
   `LastName` varchar(45) NOT NULL,
-  `Email` varchar(45) NOT NULL,
-  `Password` varchar(45) NOT NULL,
-  `RepeatPassword` varchar(45) NOT NULL,
+  `Email` varchar(120) NOT NULL,
+  `Password` varchar(255) NOT NULL,
+  `RepeatPassword` varchar(255) NOT NULL,
   `Gender` varchar(45) NOT NULL,
   `Birthdate` varchar(45) NOT NULL,
   `Occupation` varchar(45) NOT NULL DEFAULT '',
@@ -39,7 +39,8 @@ CREATE TABLE `useraccount` (
   `Brand` varchar(45) NOT NULL,
   `Color` varchar(45) NOT NULL,
   `Type` varchar(45) NOT NULL,
-  PRIMARY KEY (`FirstName`,`MiddleName`,`LastName`,`Password`,`RepeatPassword`,`Gender`,`Birthdate`,`Brand`,`Color`,`Type`,`Email`,`MobileNumber`,`Username`,`PlateNumber`)
+  PRIMARY KEY (`Username`),
+  UNIQUE KEY `uk_useraccount_email` (`Email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

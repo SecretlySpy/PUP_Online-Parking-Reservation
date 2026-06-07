@@ -1,5 +1,7 @@
 package usermanagement;
 
+import app.PasswordSecurity;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -7,12 +9,18 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
@@ -20,13 +28,28 @@ import java.util.Base64;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
+/**
+ * Issues one-time password reset links and applies password changes after the
+ * submitted token is validated.
+ */
 public class PasswordResetService {
 	private static final int SOCKET_TIMEOUT_MS = 15000;
-	private static final int TEMPORARY_PASSWORD_LENGTH = 10;
-	private static final char[] PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789".toCharArray();
+	private static final int RESET_TOKEN_BYTES = 32;
+	private static final Duration RESET_TOKEN_TTL = Duration.ofMinutes(30);
 	private static final SecureRandom RANDOM = new SecureRandom();
 
-	public PasswordResetResult resetCustomerPassword(Connection conn, String accountInput) throws Exception {
+	public PasswordResetRequestResult requestCustomerPasswordReset(Connection conn, String accountInput)
+			throws Exception {
+		return requestPasswordReset(conn, AccountScope.CUSTOMER, accountInput);
+	}
+
+	public PasswordResetCompletionResult completeCustomerPasswordReset(Connection conn, String tokenOrLink,
+			char[] newPassword) throws Exception {
+		return completePasswordReset(conn, AccountScope.CUSTOMER, tokenOrLink, newPassword);
+	}
+
+	private PasswordResetRequestResult requestPasswordReset(Connection conn, AccountScope scope, String accountInput)
+			throws Exception {
 		if (conn == null) {
 			throw new IllegalStateException("Database connection is not available.");
 		}
@@ -40,13 +63,23 @@ public class PasswordResetService {
 		try {
 			conn.setAutoCommit(false);
 
-			Account account = findCustomerAccount(conn, identifier);
-			String temporaryPassword = generateTemporaryPassword();
-			updatePassword(conn, account, temporaryPassword);
-			sendResetEmail(account, temporaryPassword);
+			Account account = findAccount(conn, scope, identifier);
+			if (account == null || isBlank(account.email)) {
+				conn.commit();
+				return PasswordResetRequestResult.notSent();
+			}
+
+			expirePendingTokens(conn, scope, account.username);
+			String token = generateResetToken();
+			String tokenHash = sha256Hex(token);
+			Instant expiresAt = Instant.now().plus(RESET_TOKEN_TTL);
+			insertResetToken(conn, scope, account.username, tokenHash, expiresAt);
+
+			String resetLink = buildResetLink(token);
+			sendResetEmail(account, resetLink, expiresAt);
 
 			conn.commit();
-			return new PasswordResetResult(account.username, account.email);
+			return PasswordResetRequestResult.sent(account.username, account.email, expiresAt);
 		} catch (Exception ex) {
 			rollbackQuietly(conn);
 			throw ex;
@@ -55,8 +88,43 @@ public class PasswordResetService {
 		}
 	}
 
-	private Account findCustomerAccount(Connection conn, String identifier) throws SQLException {
-		String sql = "select Username, Email from useraccount where Username=? or Email=?";
+	private PasswordResetCompletionResult completePasswordReset(Connection conn, AccountScope scope, String tokenOrLink,
+			char[] newPassword) throws Exception {
+		if (conn == null) {
+			throw new IllegalStateException("Database connection is not available.");
+		}
+
+		String token = extractToken(tokenOrLink);
+		if (token.isEmpty()) {
+			throw new IllegalArgumentException("Paste the reset link or token from your email.");
+		}
+
+		String strengthError = PasswordSecurity.strengthError(newPassword);
+		if (strengthError != null) {
+			throw new IllegalArgumentException(strengthError);
+		}
+
+		boolean originalAutoCommit = conn.getAutoCommit();
+		try {
+			conn.setAutoCommit(false);
+
+			TokenRecord tokenRecord = findActiveToken(conn, scope, sha256Hex(token));
+			String passwordHash = PasswordSecurity.hash(newPassword);
+			updatePassword(conn, scope, tokenRecord.username, passwordHash);
+			markTokenUsed(conn, tokenRecord.resetId);
+
+			conn.commit();
+			return new PasswordResetCompletionResult(tokenRecord.username);
+		} catch (Exception ex) {
+			rollbackQuietly(conn);
+			throw ex;
+		} finally {
+			conn.setAutoCommit(originalAutoCommit);
+		}
+	}
+
+	private Account findAccount(Connection conn, AccountScope scope, String identifier) throws SQLException {
+		String sql = "select Username, Email from " + scope.tableName + " where Username=? or Email=? limit 2";
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setString(1, identifier);
 			ps.setString(2, identifier);
@@ -65,32 +133,62 @@ public class PasswordResetService {
 				Account account = null;
 				while (rs.next()) {
 					if (account != null) {
-						throw new IllegalArgumentException(
-								"More than one account matched. Please reset using the registered email address.");
+						return null;
 					}
 					account = new Account(rs.getString("Username"), rs.getString("Email"));
 				}
-
-				if (account == null) {
-					throw new IllegalArgumentException("No user account was found for that username or email address.");
-				}
-
-				if (isBlank(account.email)) {
-					throw new IllegalArgumentException("This account does not have a registered email address.");
-				}
-
 				return account;
 			}
 		}
 	}
 
-	private void updatePassword(Connection conn, Account account, String temporaryPassword) throws SQLException {
-		String sql = "update useraccount set Password=?, RepeatPassword=? where Username=? and Email=?";
+	private void expirePendingTokens(Connection conn, AccountScope scope, String username) throws SQLException {
+		String sql = "update password_reset_tokens set used_at=CURRENT_TIMESTAMP "
+				+ "where account_type=? and username=? and used_at is null";
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setString(1, temporaryPassword);
-			ps.setString(2, temporaryPassword);
-			ps.setString(3, account.username);
-			ps.setString(4, account.email);
+			ps.setString(1, scope.accountType);
+			ps.setString(2, username);
+			ps.executeUpdate();
+		}
+	}
+
+	private void insertResetToken(Connection conn, AccountScope scope, String username, String tokenHash,
+			Instant expiresAt) throws SQLException {
+		String sql = "insert into password_reset_tokens (account_type, username, token_hash, expires_at) "
+				+ "values (?,?,?,?)";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setString(1, scope.accountType);
+			ps.setString(2, username);
+			ps.setString(3, tokenHash);
+			ps.setTimestamp(4, Timestamp.from(expiresAt));
+			ps.executeUpdate();
+		}
+	}
+
+	private TokenRecord findActiveToken(Connection conn, AccountScope scope, String tokenHash) throws SQLException {
+		String sql = "select reset_id, username from password_reset_tokens "
+				+ "where account_type=? and token_hash=? and used_at is null and expires_at > CURRENT_TIMESTAMP "
+				+ "order by created_at desc limit 1 for update";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setString(1, scope.accountType);
+			ps.setString(2, tokenHash);
+
+			try (ResultSet rs = ps.executeQuery()) {
+				if (!rs.next()) {
+					throw new IllegalArgumentException("The reset link is invalid, expired, or already used.");
+				}
+				return new TokenRecord(rs.getInt("reset_id"), rs.getString("username"));
+			}
+		}
+	}
+
+	private void updatePassword(Connection conn, AccountScope scope, String username, String passwordHash)
+			throws SQLException {
+		String sql = "update " + scope.tableName + " set Password=?, RepeatPassword=? where Username=?";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setString(1, passwordHash);
+			ps.setString(2, passwordHash);
+			ps.setString(3, username);
 
 			int updatedRows = ps.executeUpdate();
 			if (updatedRows != 1) {
@@ -99,10 +197,18 @@ public class PasswordResetService {
 		}
 	}
 
-	private void sendResetEmail(Account account, String temporaryPassword) throws IOException {
+	private void markTokenUsed(Connection conn, int resetId) throws SQLException {
+		String sql = "update password_reset_tokens set used_at=CURRENT_TIMESTAMP where reset_id=?";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setInt(1, resetId);
+			ps.executeUpdate();
+		}
+	}
+
+	private void sendResetEmail(Account account, String resetLink, Instant expiresAt) throws IOException {
 		SmtpConfiguration config = SmtpConfiguration.load();
 		String subject = "PUP Parking password reset";
-		String message = buildResetMessage(config.fromAddress, account, subject, temporaryPassword);
+		String message = buildResetMessage(config.fromAddress, account, subject, resetLink, expiresAt);
 
 		try (SmtpSession session = new SmtpSession(createSocket(config))) {
 			session.expectGreeting();
@@ -118,8 +224,8 @@ public class PasswordResetService {
 				session.authenticate(config.username, config.password);
 			}
 
-			session.command("MAIL FROM:<" + config.fromAddress + ">", 250);
-			session.command("RCPT TO:<" + account.email + ">", 250, 251);
+			session.command("MAIL FROM:<" + cleanHeader(config.fromAddress) + ">", 250);
+			session.command("RCPT TO:<" + cleanHeader(account.email) + ">", 250, 251);
 			session.command("DATA", 354);
 			session.writeMessage(message);
 			session.expectResponse("sending message body", 250);
@@ -137,20 +243,22 @@ public class PasswordResetService {
 		}
 
 		SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-		SSLSocket sslSocket = (SSLSocket) factory.createSocket(socket, config.host, config.port,
-				true);
+		SSLSocket sslSocket = (SSLSocket) factory.createSocket(socket, config.host, config.port, true);
 		sslSocket.setSoTimeout(SOCKET_TIMEOUT_MS);
 		sslSocket.startHandshake();
 		return sslSocket;
 	}
 
-	private String buildResetMessage(String fromAddress, Account account, String subject, String temporaryPassword) {
+	private String buildResetMessage(String fromAddress, Account account, String subject, String resetLink,
+			Instant expiresAt) {
+		String expiration = DateTimeFormatter.RFC_1123_DATE_TIME
+				.format(ZonedDateTime.ofInstant(expiresAt, ZoneId.systemDefault()));
 		String body = "Hello " + account.username + ",\n\n"
 				+ "We received a request to reset your PUP Online Parking Reservation password.\n\n"
-				+ "Username: " + account.username + "\n"
-				+ "Temporary password: " + temporaryPassword + "\n\n"
-				+ "Please log in with this temporary password and change it after signing in.\n"
-				+ "If you did not request this reset, please contact an administrator.\n";
+				+ "Use this secure reset link within 30 minutes:\n" + resetLink + "\n\n"
+				+ "If your desktop app does not open the link automatically, copy the full link into the Reset Password dialog.\n\n"
+				+ "This link expires on " + expiration + " and can be used only once.\n"
+				+ "If you did not request this reset, you can ignore this email.\n";
 
 		return "From: " + cleanHeader(fromAddress) + "\r\n"
 				+ "To: " + cleanHeader(account.email) + "\r\n"
@@ -162,12 +270,47 @@ public class PasswordResetService {
 				+ body;
 	}
 
-	private String generateTemporaryPassword() {
-		StringBuilder password = new StringBuilder(TEMPORARY_PASSWORD_LENGTH);
-		for (int i = 0; i < TEMPORARY_PASSWORD_LENGTH; i++) {
-			password.append(PASSWORD_CHARS[RANDOM.nextInt(PASSWORD_CHARS.length)]);
+	private String buildResetLink(String token) {
+		String baseUrl = setting("parking.reset.baseUrl", "PARKING_PASSWORD_RESET_BASE_URL");
+		if (baseUrl.isEmpty()) {
+			baseUrl = "https://pup-parking.local/reset-password";
 		}
-		return password.toString();
+		return baseUrl + (baseUrl.contains("?") ? "&" : "?") + "token=" + token;
+	}
+
+	private String extractToken(String tokenOrLink) {
+		String value = tokenOrLink == null ? "" : tokenOrLink.trim();
+		int tokenIndex = value.indexOf("token=");
+		if (tokenIndex < 0) {
+			return value;
+		}
+
+		String token = value.substring(tokenIndex + "token=".length());
+		int queryEnd = token.indexOf('&');
+		if (queryEnd >= 0) {
+			token = token.substring(0, queryEnd);
+		}
+		int fragmentStart = token.indexOf('#');
+		if (fragmentStart >= 0) {
+			token = token.substring(0, fragmentStart);
+		}
+		return URLDecoder.decode(token, StandardCharsets.UTF_8);
+	}
+
+	private String generateResetToken() {
+		byte[] token = new byte[RESET_TOKEN_BYTES];
+		RANDOM.nextBytes(token);
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(token);
+	}
+
+	private String sha256Hex(String value) throws Exception {
+		MessageDigest digest = MessageDigest.getInstance("SHA-256");
+		byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+		StringBuilder hex = new StringBuilder(hash.length * 2);
+		for (byte current : hash) {
+			hex.append(String.format("%02x", current & 0xff));
+		}
+		return hex.toString();
 	}
 
 	private void rollbackQuietly(Connection conn) {
@@ -219,6 +362,18 @@ public class PasswordResetService {
 		return Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8));
 	}
 
+	private enum AccountScope {
+		CUSTOMER("customer", "useraccount");
+
+		private final String accountType;
+		private final String tableName;
+
+		AccountScope(String accountType, String tableName) {
+			this.accountType = accountType;
+			this.tableName = tableName;
+		}
+	}
+
 	private static class Account {
 		private final String username;
 		private final String email;
@@ -229,20 +384,54 @@ public class PasswordResetService {
 		}
 	}
 
-	public static class PasswordResetResult {
+	private static class TokenRecord {
+		private final int resetId;
+		private final String username;
+
+		private TokenRecord(int resetId, String username) {
+			this.resetId = resetId;
+			this.username = username;
+		}
+	}
+
+	public static class PasswordResetRequestResult {
 		private final String username;
 		private final String email;
+		private final Instant expiresAt;
+		private final boolean emailSent;
 
-		private PasswordResetResult(String username, String email) {
+		private PasswordResetRequestResult(String username, String email, Instant expiresAt, boolean emailSent) {
 			this.username = username;
 			this.email = email;
+			this.expiresAt = expiresAt;
+			this.emailSent = emailSent;
+		}
+
+		private static PasswordResetRequestResult sent(String username, String email, Instant expiresAt) {
+			return new PasswordResetRequestResult(username, email, expiresAt, true);
+		}
+
+		private static PasswordResetRequestResult notSent() {
+			return new PasswordResetRequestResult(null, null, null, false);
 		}
 
 		public String getUsername() {
 			return username;
 		}
 
+		public Instant getExpiresAt() {
+			return expiresAt;
+		}
+
+		public boolean isEmailSent() {
+			return emailSent;
+		}
+
 		public String getMaskedEmail() {
+			if (email == null) {
+				return "";
+			}
+
 			int atIndex = email.indexOf('@');
 			if (atIndex <= 1) {
 				return email;
@@ -255,6 +444,18 @@ public class PasswordResetService {
 			}
 			masked.append(email.substring(atIndex));
 			return masked.toString();
+		}
+	}
+
+	public static class PasswordResetCompletionResult {
+		private final String username;
+
+		private PasswordResetCompletionResult(String username) {
+			this.username = username;
+		}
+
+		public String getUsername() {
+			return username;
 		}
 	}
 

@@ -3,6 +3,7 @@ package adminmanagement;
 import DatabaseConnection.ConnectionDB;
 import app.AppOptions;
 import app.AppTheme;
+import app.PasswordSecurity;
 
 import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
@@ -215,53 +216,65 @@ public class reg extends JFrame implements ActionListener {
 	}
 
 	private void submitRegistration() {
-		String password = new String(passwordField.getPassword());
-		String repeatPassword = new String(repeatPasswordField.getPassword());
+		char[] password = passwordField.getPassword();
+		char[] repeatPassword = repeatPasswordField.getPassword();
+		try {
+			if (!termsBox.isSelected()) {
+				summaryArea.setText("Please accept the terms and conditions.");
+				return;
+			}
+			if (isBlank(firstNameField) || isBlank(middleNameField) || isBlank(lastNameField) || isBlank(emailField)
+					|| isBlank(mobileField) || isBlank(usernameField) || password.length == 0
+					|| repeatPassword.length == 0) {
+				summaryArea.setText("Please fill in every admin registration field.");
+				return;
+			}
+			String strengthError = PasswordSecurity.strengthError(password);
+			if (strengthError != null) {
+				summaryArea.setText(strengthError);
+				return;
+			}
+			if (!PasswordSecurity.matches(password, repeatPassword)) {
+				summaryArea.setText("Passwords do not match.");
+				return;
+			}
+			if (conn == null) {
+				AppTheme.showError(this, "Database connection is not available.", null);
+				return;
+			}
 
-		if (!termsBox.isSelected()) {
-			summaryArea.setText("Please accept the terms and conditions.");
-			return;
-		}
-		if (isBlank(firstNameField) || isBlank(middleNameField) || isBlank(lastNameField) || isBlank(emailField)
-				|| isBlank(mobileField) || isBlank(usernameField) || password.trim().isEmpty()
-				|| repeatPassword.trim().isEmpty()) {
-			summaryArea.setText("Please fill in every admin registration field.");
-			return;
-		}
-		if (!password.equals(repeatPassword)) {
-			summaryArea.setText("Passwords do not match.");
-			return;
-		}
-		if (conn == null) {
-			AppTheme.showError(this, "Database connection is not available.", null);
-			return;
-		}
+			String birthdate = monthBox.getSelectedItem() + " " + dayBox.getSelectedItem() + ", "
+					+ yearBox.getSelectedItem();
+			String passwordHash = PasswordSecurity.hash(password);
+			String sql = "insert into adminaccount "
+					+ "(FirstName,MiddleName,LastName,Email,Gender,Birthdate,MobileNumber,Username,Password,RepeatPassword) "
+					+ "values (?,?,?,?,?,?,?,?,?,?)";
 
-		String birthdate = monthBox.getSelectedItem() + " " + dayBox.getSelectedItem() + ", "
-				+ yearBox.getSelectedItem();
-		String sql = "insert into adminaccount "
-				+ "(FirstName,MiddleName,LastName,Email,Gender,Birthdate,MobileNumber,Username,Password,RepeatPassword) "
-				+ "values (?,?,?,?,?,?,?,?,?,?)";
+			try (PreparedStatement statement = conn.prepareStatement(sql)) {
+				statement.setString(1, firstNameField.getText().trim());
+				statement.setString(2, middleNameField.getText().trim());
+				statement.setString(3, lastNameField.getText().trim());
+				statement.setString(4, emailField.getText().trim());
+				statement.setString(5, genderGroup.getSelection().getActionCommand());
+				statement.setString(6, birthdate);
+				statement.setString(7, mobileField.getText().trim());
+				statement.setString(8, usernameField.getText().trim());
+				statement.setString(9, passwordHash);
+				statement.setString(10, passwordHash);
+				statement.executeUpdate();
 
-		try (PreparedStatement statement = conn.prepareStatement(sql)) {
-			statement.setString(1, firstNameField.getText().trim());
-			statement.setString(2, middleNameField.getText().trim());
-			statement.setString(3, lastNameField.getText().trim());
-			statement.setString(4, emailField.getText().trim());
-			statement.setString(5, genderGroup.getSelection().getActionCommand());
-			statement.setString(6, birthdate);
-			statement.setString(7, mobileField.getText().trim());
-			statement.setString(8, usernameField.getText().trim());
-			statement.setString(9, password);
-			statement.setString(10, repeatPassword);
-			statement.executeUpdate();
-
-			summaryArea.setText("Admin saved:\n" + firstNameField.getText().trim() + " "
-					+ lastNameField.getText().trim() + "\n" + emailField.getText().trim() + "\n"
-					+ usernameField.getText().trim());
-			openLogin();
+				summaryArea.setText("Admin saved:\n" + firstNameField.getText().trim() + " "
+						+ lastNameField.getText().trim() + "\n" + emailField.getText().trim() + "\n"
+						+ usernameField.getText().trim());
+				openLogin();
+			} catch (Exception error) {
+				AppTheme.showError(this, "Unable to save admin registration.", error);
+			}
 		} catch (Exception error) {
-			AppTheme.showError(this, "Unable to save admin registration.", error);
+			AppTheme.showError(this, "Unable to secure the admin password.", error);
+		} finally {
+			PasswordSecurity.clear(password);
+			PasswordSecurity.clear(repeatPassword);
 		}
 	}
 

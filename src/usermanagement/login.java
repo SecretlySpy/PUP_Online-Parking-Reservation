@@ -1,7 +1,9 @@
 package usermanagement;
 
 import DatabaseConnection.ConnectionDB;
+import app.AuthenticationService;
 import app.AppTheme;
+import app.PasswordSecurity;
 import app.SessionContext;
 import app.UserRole;
 
@@ -11,8 +13,7 @@ import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.util.concurrent.ExecutionException;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -24,6 +25,7 @@ import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 
 /**
  * User login screen for customer-facing workflows.
@@ -114,7 +116,7 @@ public class login extends JFrame implements ActionListener {
 		actions.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
 
 		loginButton = AppTheme.primaryButton("Login");
-		resetButton = AppTheme.secondaryButton("Reset");
+		resetButton = AppTheme.secondaryButton("Reset Password");
 		registerButton = AppTheme.secondaryButton("Create Account");
 
 		loginButton.addActionListener(this);
@@ -139,89 +141,162 @@ public class login extends JFrame implements ActionListener {
 		} else if (source == loginButton) {
 			loginUser();
 		} else if (source == resetButton) {
-			resetForm();
+			openPasswordResetWorkflow();
 		} else if (source == showPasswordBox) {
 			passwordField.setEchoChar(showPasswordBox.isSelected() ? (char) 0 : '*');
 		}
 	}
 
 	private void openRegistration() {
-			reg app = new reg();
+		reg app = new reg();
 		AppTheme.showFrame(app, "Registration Form", 1000, 750);
 		dispose();
 	}
 
-	private void resetForm() {
-		usernameField.setText("");
-		passwordField.setText("");
-		statusLabel.setText("Use your registered customer account.");
-		usernameField.requestFocusInWindow();
-	}
+	private void openPasswordResetWorkflow() {
+		String[] options = { "Send Reset Link", "Use Reset Link", "Cancel" };
+		int selection = JOptionPane.showOptionDialog(this, "Choose how you want to reset your password.",
+				"Reset Password", JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
 
-	@Override
-	public void setVisible(boolean visible) {
-		if (visible) {
-			wirePasswordResetButton();
-		}
-		super.setVisible(visible);
-	}
-
-	private void wirePasswordResetButton() {
-		java.awt.Component[] components = getContentPane().getComponents();
-		for (java.awt.Component component : components) {
-			if (component instanceof javax.swing.JButton) {
-				javax.swing.JButton button = (javax.swing.JButton) component;
-				String text = button.getText() == null ? "" : button.getText().trim().toLowerCase();
-				if (text.contains("reset") || text.contains("forgot")) {
-					button.setText("Forgot Password");
-					for (java.awt.event.ActionListener listener : button.getActionListeners()) {
-						button.removeActionListener(listener);
-					}
-					button.addActionListener(new java.awt.event.ActionListener() {
-						@Override
-						public void actionPerformed(java.awt.event.ActionEvent event) {
-							resetPassword();
-						}
-					});
-					return;
-				}
-			}
+		if (selection == 0) {
+			sendPasswordResetLink();
+		} else if (selection == 1) {
+			completePasswordReset();
 		}
 	}
 
-	private void resetPassword() {
-		String accountInput = javax.swing.JOptionPane.showInputDialog(this,
-				"Enter your username or registered email address:");
+	private void sendPasswordResetLink() {
+		String accountInput = JOptionPane.showInputDialog(this, "Enter your username or registered email address:",
+				usernameField.getText().trim());
 		if (accountInput == null) {
 			return;
 		}
 		accountInput = accountInput.trim();
 
 		if (accountInput.isEmpty()) {
-			javax.swing.JOptionPane.showMessageDialog(this, "Please enter your username or registered email address.");
+			JOptionPane.showMessageDialog(this, "Please enter your username or registered email address.");
 			return;
 		}
 
-		int confirm = javax.swing.JOptionPane.showConfirmDialog(this,
-				"A temporary password will be sent to the email address on your account.", "Reset Password",
-				javax.swing.JOptionPane.OK_CANCEL_OPTION);
-		if (confirm != javax.swing.JOptionPane.OK_OPTION) {
+		setLoginActionsEnabled(false);
+		statusLabel.setText("Sending password reset link...");
+
+		final String identifier = accountInput;
+		new SwingWorker<PasswordResetService.PasswordResetRequestResult, Void>() {
+			@Override
+			protected PasswordResetService.PasswordResetRequestResult doInBackground() throws Exception {
+				try (Connection resetConnection = ConnectionDB.getConnection()) {
+					if (resetConnection == null) {
+						throw new IllegalStateException("Database connection is not available.");
+					}
+					return new PasswordResetService().requestCustomerPasswordReset(resetConnection, identifier);
+				}
+			}
+
+			@Override
+			protected void done() {
+				setLoginActionsEnabled(true);
+				try {
+					get();
+					statusLabel.setText("Password reset request submitted.");
+					JOptionPane.showMessageDialog(login.this,
+							"If an account matches that username or email, a secure reset link will be sent.");
+				} catch (Exception error) {
+					statusLabel.setText("Unable to send password reset link.");
+					AppTheme.showError(login.this, "Unable to send password reset link.", unwrap(error));
+				}
+			}
+		}.execute();
+	}
+
+	private void completePasswordReset() {
+		String tokenOrLink = JOptionPane.showInputDialog(this, "Paste the reset link or token from your email:");
+		if (tokenOrLink == null) {
+			return;
+		}
+		tokenOrLink = tokenOrLink.trim();
+
+		if (tokenOrLink.isEmpty()) {
+			JOptionPane.showMessageDialog(this, "Paste the reset link or token from your email.");
 			return;
 		}
 
-		try (java.sql.Connection resetConnection = DatabaseConnection.ConnectionDB.getConnection()) {
-			if (resetConnection == null) {
-				javax.swing.JOptionPane.showMessageDialog(this, "Database connection is not available.");
+		JPasswordField newPasswordField = AppTheme.passwordField("New password");
+		JPasswordField repeatPasswordField = AppTheme.passwordField("Confirm new password");
+		JPanel panel = new JPanel(new GridBagLayout());
+		panel.add(AppTheme.label("New Password"), AppTheme.constraints(0, 0));
+		panel.add(newPasswordField, AppTheme.constraints(1, 0));
+		panel.add(AppTheme.label("Confirm Password"), AppTheme.constraints(0, 1));
+		panel.add(repeatPasswordField, AppTheme.constraints(1, 1));
+
+		int confirm = JOptionPane.showConfirmDialog(this, panel, "Set New Password", JOptionPane.OK_CANCEL_OPTION,
+				JOptionPane.PLAIN_MESSAGE);
+		if (confirm != JOptionPane.OK_OPTION) {
+			return;
+		}
+
+		char[] newPassword = newPasswordField.getPassword();
+		char[] repeatPassword = repeatPasswordField.getPassword();
+		try {
+			if (!PasswordSecurity.matches(newPassword, repeatPassword)) {
+				JOptionPane.showMessageDialog(this, "Passwords do not match.");
 				return;
 			}
-			PasswordResetService.PasswordResetResult result = new PasswordResetService().resetCustomerPassword(
-					resetConnection, accountInput);
-			javax.swing.JOptionPane.showMessageDialog(this,
-					"A temporary password was sent to " + result.getMaskedEmail() + " for " + result.getUsername()
-							+ ".");
-		} catch (Exception ex) {
-			javax.swing.JOptionPane.showMessageDialog(this, "Unable to reset password: " + ex.getMessage());
+
+			String strengthError = PasswordSecurity.strengthError(newPassword);
+			if (strengthError != null) {
+				JOptionPane.showMessageDialog(this, strengthError);
+				return;
+			}
+		} finally {
+			PasswordSecurity.clear(repeatPassword);
 		}
+
+		setLoginActionsEnabled(false);
+		statusLabel.setText("Updating password...");
+
+		final String resetTokenOrLink = tokenOrLink;
+		new SwingWorker<PasswordResetService.PasswordResetCompletionResult, Void>() {
+			@Override
+			protected PasswordResetService.PasswordResetCompletionResult doInBackground() throws Exception {
+				try (Connection resetConnection = ConnectionDB.getConnection()) {
+					if (resetConnection == null) {
+						throw new IllegalStateException("Database connection is not available.");
+					}
+					return new PasswordResetService().completeCustomerPasswordReset(resetConnection, resetTokenOrLink,
+							newPassword);
+				}
+			}
+
+			@Override
+			protected void done() {
+				PasswordSecurity.clear(newPassword);
+				setLoginActionsEnabled(true);
+				try {
+					PasswordResetService.PasswordResetCompletionResult result = get();
+					usernameField.setText(result.getUsername());
+					passwordField.setText("");
+					statusLabel.setText("Password updated. Sign in with your new password.");
+					JOptionPane.showMessageDialog(login.this, "Your password has been updated.");
+				} catch (Exception error) {
+					statusLabel.setText("Unable to update password.");
+					AppTheme.showError(login.this, "Unable to update password.", unwrap(error));
+				}
+			}
+		}.execute();
+	}
+
+	private Exception unwrap(Exception error) {
+		if (error instanceof ExecutionException && error.getCause() instanceof Exception) {
+			return (Exception) error.getCause();
+		}
+		return error;
+	}
+
+	private void setLoginActionsEnabled(boolean enabled) {
+		loginButton.setEnabled(enabled);
+		resetButton.setEnabled(enabled);
+		registerButton.setEnabled(enabled);
 	}
 
 	private void loginUser() {
@@ -232,26 +307,24 @@ public class login extends JFrame implements ActionListener {
 		}
 
 		String username = usernameField.getText().trim();
-		String password = new String(passwordField.getPassword());
-		if (username.isEmpty() || password.isEmpty()) {
+		char[] password = passwordField.getPassword();
+		if (username.isEmpty() || password.length == 0) {
 			statusLabel.setText("Enter both username and password.");
+			PasswordSecurity.clear(password);
 			return;
 		}
 
-		String sql = "select Username from useraccount where Username=? and Password=?";
-		try (PreparedStatement statement = conn.prepareStatement(sql)) {
-			statement.setString(1, username);
-			statement.setString(2, password);
-			try (ResultSet resultSet = statement.executeQuery()) {
-				if (resultSet.next()) {
-					openMenu(resultSet.getString("Username"));
-				} else {
-					statusLabel.setText("Invalid username or password.");
-					passwordField.setText("");
-				}
+		try {
+			if (AuthenticationService.authenticateCustomer(conn, username, password)) {
+				openMenu(username);
+			} else {
+				statusLabel.setText("Invalid username or password.");
+				passwordField.setText("");
 			}
 		} catch (Exception error) {
 			AppTheme.showError(this, "Unable to log in.", error);
+		} finally {
+			PasswordSecurity.clear(password);
 		}
 	}
 

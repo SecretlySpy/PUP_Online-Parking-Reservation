@@ -1,7 +1,9 @@
 package adminmanagement;
 
 import DatabaseConnection.ConnectionDB;
+import app.AuthenticationService;
 import app.AppTheme;
+import app.PasswordSecurity;
 import app.SessionContext;
 import app.UserRole;
 
@@ -11,8 +13,6 @@ import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -114,7 +114,7 @@ public class login extends JFrame implements ActionListener {
 		actions.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
 
 		loginButton = AppTheme.primaryButton("Login");
-		resetButton = AppTheme.secondaryButton("Reset");
+		resetButton = AppTheme.secondaryButton("Clear");
 		registerButton = AppTheme.secondaryButton("Register Admin");
 
 		loginButton.addActionListener(this);
@@ -162,26 +162,24 @@ public class login extends JFrame implements ActionListener {
 		}
 
 		String username = usernameField.getText().trim();
-		String password = new String(passwordField.getPassword());
-		if (username.isEmpty() || password.isEmpty()) {
+		char[] password = passwordField.getPassword();
+		if (username.isEmpty() || password.length == 0) {
 			statusLabel.setText("Enter both username and password.");
+			PasswordSecurity.clear(password);
 			return;
 		}
 
-		String sql = "select Username from adminaccount where Username=? and Password=?";
-		try (PreparedStatement statement = conn.prepareStatement(sql)) {
-			statement.setString(1, username);
-			statement.setString(2, password);
-			try (ResultSet resultSet = statement.executeQuery()) {
-				if (resultSet.next()) {
-					openMenu();
-				} else {
-					statusLabel.setText("Invalid admin username or password.");
-					passwordField.setText("");
-				}
+		try {
+			if (AuthenticationService.authenticateAdmin(conn, username, password)) {
+				openMenu();
+			} else {
+				statusLabel.setText("Invalid admin username or password.");
+				passwordField.setText("");
 			}
 		} catch (Exception error) {
 			AppTheme.showError(this, "Unable to log in.", error);
+		} finally {
+			PasswordSecurity.clear(password);
 		}
 	}
 

@@ -30,10 +30,11 @@ CREATE TABLE `adminaccount` (
   `Birthdate` varchar(45) NOT NULL,
   `MobileNumber` varchar(45) NOT NULL,
   `Username` varchar(45) NOT NULL,
-  `Password` varchar(45) NOT NULL,
-  `RepeatPassword` varchar(45) NOT NULL,
-  `Email` varchar(45) NOT NULL,
-  PRIMARY KEY (`FirstName`,`MiddleName`,`LastName`,`Gender`,`Birthdate`,`Password`,`RepeatPassword`,`MobileNumber`,`Username`,`Email`)
+  `Password` varchar(255) NOT NULL,
+  `RepeatPassword` varchar(255) NOT NULL,
+  `Email` varchar(120) NOT NULL,
+  PRIMARY KEY (`Username`),
+  UNIQUE KEY `uk_adminaccount_email` (`Email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

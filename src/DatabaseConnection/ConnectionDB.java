@@ -2,6 +2,7 @@
 package DatabaseConnection;
 
 import app.AppConfig;
+import app.DatabaseInitializer;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -15,7 +16,10 @@ public class ConnectionDB {
 	public static Connection getConnection() {
 		try {
 			Class.forName(DRIVER);
-			return DriverManager.getConnection(AppConfig.dbUrl(), AppConfig.dbUser(), AppConfig.dbPassword());
+			Connection connection = DriverManager.getConnection(AppConfig.dbUrl(), AppConfig.dbUser(),
+					AppConfig.dbPassword());
+			DatabaseInitializer.ensureEnhancementSchema(connection);
+			return connection;
 		} catch (Exception error) {
 			System.err.println("Database connection failed: " + error.getMessage());
 			return null;

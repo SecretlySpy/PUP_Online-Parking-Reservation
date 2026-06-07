@@ -1,7 +1,12 @@
 package app;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Creates enhancement tables at runtime so existing local databases keep working
@@ -47,10 +52,101 @@ public final class DatabaseInitializer {
 					+ "created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (activity_id), "
 					+ "KEY idx_system_activity_created (created_at))");
 
+			ensureCredentialSchema(conn, statement, "useraccount");
+			ensureCredentialSchema(conn, statement, "adminaccount");
+			ensurePasswordResetSchema(statement);
 			seedSlots(statement);
 		} catch (Exception error) {
 			System.err.println("Unable to initialize enhanced database schema: " + error.getMessage());
 		}
+	}
+
+	private static void ensureCredentialSchema(Connection conn, Statement statement, String tableName)
+			throws SQLException {
+		if (!tableExists(conn, tableName)) {
+			return;
+		}
+
+		normalizePrimaryKey(conn, statement, tableName);
+		if (columnSize(conn, tableName, "Email") < 120 || columnSize(conn, tableName, "Password") < 255
+				|| columnSize(conn, tableName, "RepeatPassword") < 255) {
+			statement.executeUpdate("ALTER TABLE `" + tableName + "` MODIFY `Email` varchar(120) NOT NULL, "
+					+ "MODIFY `Password` varchar(255) NOT NULL, MODIFY `RepeatPassword` varchar(255) NOT NULL");
+		}
+		ensureUniqueIndex(conn, statement, tableName, "uk_" + tableName + "_email", "Email");
+	}
+
+	private static void normalizePrimaryKey(Connection conn, Statement statement, String tableName) throws SQLException {
+		List<String> primaryKeyColumns = primaryKeyColumns(conn, tableName);
+		boolean hasUsernamePrimaryKey = primaryKeyColumns.size() == 1
+				&& "Username".equalsIgnoreCase(primaryKeyColumns.get(0));
+
+		if (!primaryKeyColumns.isEmpty() && !hasUsernamePrimaryKey) {
+			statement.executeUpdate("ALTER TABLE `" + tableName + "` DROP PRIMARY KEY");
+			primaryKeyColumns.clear();
+		}
+
+		if (primaryKeyColumns.isEmpty()) {
+			statement.executeUpdate("ALTER TABLE `" + tableName + "` ADD PRIMARY KEY (`Username`)");
+		}
+	}
+
+	private static void ensurePasswordResetSchema(Statement statement) throws SQLException {
+		statement.executeUpdate("CREATE TABLE IF NOT EXISTS password_reset_tokens ("
+				+ "reset_id int NOT NULL AUTO_INCREMENT, account_type varchar(20) NOT NULL, "
+				+ "username varchar(45) NOT NULL, token_hash char(64) NOT NULL, expires_at datetime NOT NULL, "
+				+ "used_at datetime NULL, created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+				+ "PRIMARY KEY (reset_id), UNIQUE KEY uk_password_reset_token_hash (token_hash), "
+				+ "KEY idx_password_reset_account (account_type, username, expires_at, used_at))");
+	}
+
+	private static boolean tableExists(Connection conn, String tableName) throws SQLException {
+		DatabaseMetaData metadata = conn.getMetaData();
+		try (ResultSet tables = metadata.getTables(conn.getCatalog(), null, tableName, new String[] { "TABLE" })) {
+			return tables.next();
+		}
+	}
+
+	private static List<String> primaryKeyColumns(Connection conn, String tableName) throws SQLException {
+		List<String> columns = new ArrayList<String>();
+		DatabaseMetaData metadata = conn.getMetaData();
+		try (ResultSet primaryKeys = metadata.getPrimaryKeys(conn.getCatalog(), null, tableName)) {
+			while (primaryKeys.next()) {
+				columns.add(primaryKeys.getString("COLUMN_NAME"));
+			}
+		}
+		return columns;
+	}
+
+	private static int columnSize(Connection conn, String tableName, String columnName) throws SQLException {
+		DatabaseMetaData metadata = conn.getMetaData();
+		try (ResultSet columns = metadata.getColumns(conn.getCatalog(), null, tableName, columnName)) {
+			if (columns.next()) {
+				return columns.getInt("COLUMN_SIZE");
+			}
+		}
+		return 0;
+	}
+
+	private static void ensureUniqueIndex(Connection conn, Statement statement, String tableName, String indexName,
+			String columnName) throws SQLException {
+		if (indexExists(conn, tableName, indexName)) {
+			return;
+		}
+		statement.executeUpdate("CREATE UNIQUE INDEX `" + indexName + "` ON `" + tableName + "` (`" + columnName
+				+ "`)");
+	}
+
+	private static boolean indexExists(Connection conn, String tableName, String indexName) throws SQLException {
+		DatabaseMetaData metadata = conn.getMetaData();
+		try (ResultSet indexes = metadata.getIndexInfo(conn.getCatalog(), null, tableName, false, false)) {
+			while (indexes.next()) {
+				if (indexName.equalsIgnoreCase(indexes.getString("INDEX_NAME"))) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private static void seedSlots(Statement statement) throws Exception {

@@ -29,6 +29,20 @@ The database connection is controlled by environment variables. If none are set,
 
 Copy `.env.example` to `.env` when you want Docker Compose to use custom values.
 
+Password reset email is controlled by SMTP environment variables or matching
+`parking.smtp.*` system properties:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PARKING_SMTP_HOST` | none | SMTP host used for reset emails |
+| `PARKING_SMTP_PORT` | `587` or `465` | SMTP port, based on TLS mode |
+| `PARKING_SMTP_USERNAME` | none | SMTP username |
+| `PARKING_SMTP_PASSWORD` | none | SMTP password or app password |
+| `PARKING_SMTP_FROM` | SMTP username | Sender address |
+| `PARKING_SMTP_STARTTLS` | `true` | Enable STARTTLS for port 587 style SMTP |
+| `PARKING_SMTP_SSL` | `false` | Enable implicit TLS for port 465 style SMTP |
+| `PARKING_PASSWORD_RESET_BASE_URL` | `https://pup-parking.local/reset-password` | Base URL used in emailed reset links |
+
 ### Local Run Steps
 
 1. Start Docker Desktop.
@@ -77,6 +91,7 @@ Demo admin login:
 ### Customer Features
 
 - Role-based customer login and registration.
+- Reset Password workflow that emails a one-time reset link and lets the user paste the link/token back into the desktop app.
 - Real-time slot availability refreshed every 5 seconds.
 - Slot search by floor, vehicle/slot type, availability, date, and time range.
 - Scheduled reservation booking with start and end times.
@@ -142,9 +157,12 @@ The Swing GUI is intended to run on the host desktop through `scripts\run-user.p
 | --- | --- |
 | `src/app/AppConfig.java` | Reads database settings from system properties or environment variables |
 | `src/app/DatabaseInitializer.java` | Creates enhanced reservation tables at runtime when missing |
+| `src/app/AuthenticationService.java` | Verifies credentials and upgrades legacy passwords to secure hashes |
+| `src/app/PasswordSecurity.java` | PBKDF2 password hashing, validation, and constant-time comparisons |
 | `src/app/AppTheme.java` | Shared Swing theme, colors, spacing, table styling, and frame helpers |
 | `src/app/ReservationRepository.java` | Slot availability, booking, reservation history, reports, and activity logging |
 | `src/DatabaseConnection/ConnectionDB.java` | Creates MySQL connections using `AppConfig` |
+| `src/usermanagement/PasswordResetService.java` | Issues one-time reset links and applies token-verified password changes |
 | `scripts/compile.ps1` | Downloads jars into `build/lib` and compiles classes into `build/classes` |
 | `scripts/import-database.ps1` | Starts the Docker database and imports SQL seed files |
 | `Dockerfile` | Builds the Java application image with required jars |
@@ -188,6 +206,8 @@ The Swing GUI is intended to run on the host desktop through `scripts\run-user.p
 
 - Replaced duplicated login/menu styling with shared `AppTheme` helpers.
 - Added environment-driven database settings through `AppConfig`.
+- Replaced plain-text password writes with PBKDF2 hashes and transparent legacy password upgrades after successful login.
+- Replaced temporary-password recovery with a one-time reset-link workflow backed by hashed, expiring tokens.
 - Added enhanced reservation tables for live slot availability, scheduling, notification logs, and activity monitoring.
 - Updated main customer and admin screens to use layout managers instead of fixed absolute positioning. The desktop UI resizes smoothly across common desktop and tablet-sized windows; native mobile deployment would require a separate mobile frontend.
 - Improved search, reset, status, and navigation behavior across customer, inventory, reservation, slot, history, report, and billing screens.
