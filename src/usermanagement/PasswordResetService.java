@@ -48,6 +48,18 @@ public class PasswordResetService {
 		return completePasswordReset(conn, AccountScope.CUSTOMER, tokenOrLink, newPassword);
 	}
 
+	public PasswordResetRequestResult requestAdminPasswordReset(Connection conn, String accountInput)
+			throws Exception {
+		// Administrators reset against the adminaccount table; the token/email flow is identical to customers.
+		return requestPasswordReset(conn, AccountScope.ADMIN, accountInput);
+	}
+
+	public PasswordResetCompletionResult completeAdminPasswordReset(Connection conn, String tokenOrLink,
+			char[] newPassword) throws Exception {
+		// Tokens are scoped by account_type, so an admin link can never unlock a customer account and vice versa.
+		return completePasswordReset(conn, AccountScope.ADMIN, tokenOrLink, newPassword);
+	}
+
 	private PasswordResetRequestResult requestPasswordReset(Connection conn, AccountScope scope, String accountInput)
 			throws Exception {
 		if (conn == null) {
@@ -363,7 +375,8 @@ public class PasswordResetService {
 	}
 
 	private enum AccountScope {
-		CUSTOMER("customer", "useraccount");
+		CUSTOMER("customer", "useraccount"),
+		ADMIN("admin", "adminaccount");
 
 		private final String accountType;
 		private final String tableName;
