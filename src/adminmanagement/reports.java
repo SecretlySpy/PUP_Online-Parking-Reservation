@@ -33,6 +33,7 @@ public class reports extends JFrame implements ActionListener {
 	private JLabel cancelledLabel;
 	private JTable activityTable;
 	private JButton refreshButton;
+	private JButton exportButton;
 	private JButton menuButton;
 
 	public reports() {
@@ -57,11 +58,15 @@ public class reports extends JFrame implements ActionListener {
 		toolbar.setOpaque(false);
 
 		refreshButton = AppTheme.primaryButton("Refresh");
+		exportButton = AppTheme.primaryButton("Export CSV");
 		menuButton = AppTheme.secondaryButton("Back to Menu");
+		
 		refreshButton.addActionListener(this);
+		exportButton.addActionListener(this);
 		menuButton.addActionListener(this);
 
 		toolbar.add(refreshButton);
+		toolbar.add(exportButton);
 		toolbar.add(menuButton);
 		return toolbar;
 	}
@@ -125,10 +130,44 @@ public class reports extends JFrame implements ActionListener {
 		Object source = event.getSource();
 		if (source == refreshButton) {
 			loadReport();
+		} else if (source == exportButton) {
+			exportReport();
 		} else if (source == menuButton) {
 			menu app = new menu();
 			AppTheme.showFrame(app, "Admin Menu", 1060, 600);
 			dispose();
+		}
+	}
+
+	private void exportReport() {
+		javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+		chooser.setDialogTitle("Save Report");
+		chooser.setSelectedFile(new java.io.File("Report.csv"));
+		if (chooser.showSaveDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+			try (java.io.FileWriter writer = new java.io.FileWriter(chooser.getSelectedFile())) {
+				writer.write("Metrics\n");
+				writer.write(slotsLabel.getText() + "\n");
+				writer.write(availableLabel.getText() + "\n");
+				writer.write(reservedLabel.getText() + "\n");
+				writer.write(occupiedLabel.getText() + "\n");
+				writer.write(completedLabel.getText() + "\n");
+				writer.write(cancelledLabel.getText() + "\n\n");
+				
+				writer.write("Recent Activity\n");
+				writer.write("Actor,Type,Message,Created\n");
+				javax.swing.table.TableModel model = activityTable.getModel();
+				for (int i = 0; i < model.getRowCount(); i++) {
+					for (int j = 0; j < model.getColumnCount(); j++) {
+						String val = String.valueOf(model.getValueAt(i, j)).replace("\"", "\"\"");
+						writer.write("\"" + val + "\"");
+						if (j < model.getColumnCount() - 1) writer.write(",");
+					}
+					writer.write("\n");
+				}
+				javax.swing.JOptionPane.showMessageDialog(this, "Report exported successfully.");
+			} catch (Exception ex) {
+				AppTheme.showError(this, "Failed to export report", ex);
+			}
 		}
 	}
 

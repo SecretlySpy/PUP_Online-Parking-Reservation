@@ -41,17 +41,45 @@ import javax.swing.table.JTableHeader;
  * colors, table styling, and frame defaults.
  */
 public final class AppTheme {
-	public static final Color BACKGROUND = new Color(245, 247, 250);
-	public static final Color SURFACE = Color.WHITE;
-	public static final Color SURFACE_ALT = new Color(238, 242, 247);
-	public static final Color TEXT = new Color(30, 41, 59);
-	public static final Color MUTED_TEXT = new Color(100, 116, 139);
-	public static final Color BORDER = new Color(203, 213, 225);
-	public static final Color PRIMARY = new Color(128, 0, 32);
-	public static final Color PRIMARY_HOVER = new Color(104, 0, 26);
-	public static final Color ACCENT = new Color(245, 158, 11);
-	public static final Color SUCCESS = new Color(22, 101, 52);
-	public static final Color DANGER = new Color(185, 28, 28);
+	public static Color BACKGROUND = new Color(245, 247, 250);
+	public static Color SURFACE = Color.WHITE;
+	public static Color SURFACE_ALT = new Color(238, 242, 247);
+	public static Color TEXT = new Color(30, 41, 59);
+	public static Color MUTED_TEXT = new Color(100, 116, 139);
+	public static Color BORDER = new Color(203, 213, 225);
+	public static Color PRIMARY = new Color(128, 0, 32);
+	public static Color PRIMARY_HOVER = new Color(104, 0, 26);
+	public static Color ACCENT = new Color(245, 158, 11);
+	public static Color SUCCESS = new Color(22, 101, 52);
+	public static Color DANGER = new Color(185, 28, 28);
+
+	public static boolean isDarkMode = false;
+
+	public static void toggleTheme() {
+		isDarkMode = !isDarkMode;
+		if (isDarkMode) {
+			BACKGROUND = new Color(15, 23, 42);
+			SURFACE = new Color(30, 41, 59);
+			SURFACE_ALT = new Color(51, 65, 85);
+			TEXT = new Color(248, 250, 252);
+			MUTED_TEXT = new Color(148, 163, 184);
+			BORDER = new Color(71, 85, 105);
+			PRIMARY = new Color(225, 29, 72);
+			PRIMARY_HOVER = new Color(190, 18, 60);
+		} else {
+			BACKGROUND = new Color(245, 247, 250);
+			SURFACE = Color.WHITE;
+			SURFACE_ALT = new Color(238, 242, 247);
+			TEXT = new Color(30, 41, 59);
+			MUTED_TEXT = new Color(100, 116, 139);
+			BORDER = new Color(203, 213, 225);
+			PRIMARY = new Color(128, 0, 32);
+			PRIMARY_HOVER = new Color(104, 0, 26);
+		}
+		FIELD_BORDER = BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(BORDER),
+				BorderFactory.createEmptyBorder(8, 10, 8, 10));
+	}
 
 	public static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 26);
 	public static final Font SUBTITLE_FONT = new Font("Segoe UI", Font.PLAIN, 14);
@@ -59,7 +87,7 @@ public final class AppTheme {
 	public static final Font BODY_FONT = new Font("Segoe UI", Font.PLAIN, 14);
 	public static final Font BUTTON_FONT = new Font("Segoe UI", Font.BOLD, 14);
 
-	private static final Border FIELD_BORDER = BorderFactory.createCompoundBorder(
+	private static Border FIELD_BORDER = BorderFactory.createCompoundBorder(
 			BorderFactory.createLineBorder(BORDER),
 			BorderFactory.createEmptyBorder(8, 10, 8, 10));
 

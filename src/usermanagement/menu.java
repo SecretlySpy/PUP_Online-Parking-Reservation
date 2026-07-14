@@ -1,7 +1,9 @@
 package usermanagement;
 
 import app.AppTheme;
+import app.ReservationRepository;
 import app.SessionContext;
+import DatabaseConnection.ConnectionDB;
 
 import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
@@ -18,6 +20,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 /**
  * Customer dashboard that routes the signed-in user to profile and car details.
@@ -29,8 +32,12 @@ public class menu extends JFrame implements ActionListener {
 	private JButton historyButton;
 	private JButton helpButton;
 	private JButton logoutButton;
+	private JButton themeButton;
+	private JButton notificationButton;
 	private JPanel moduleGrid;
 	private String username;
+	private Timer pollTimer;
+	private ReservationRepository repository;
 
 	public menu() {
 		this(null);
@@ -39,7 +46,26 @@ public class menu extends JFrame implements ActionListener {
 	public menu(String username) {
 		AppTheme.install();
 		this.username = username;
+		this.repository = new ReservationRepository(ConnectionDB.getConnection());
 		setContentPane(AppTheme.shell("Customer Dashboard", subtitle(), buildContent()));
+		
+		pollTimer = new Timer(5000, e -> updateNotificationCount());
+		pollTimer.start();
+		updateNotificationCount();
+	}
+
+	private void updateNotificationCount() {
+		if (username == null) return;
+		try {
+			int count = repository.getUnreadNotificationCount(username);
+			if (count > 0) {
+				notificationButton.setText("🔔 Notifications (" + count + ")");
+			} else {
+				notificationButton.setText("🔔 Notifications");
+			}
+		} catch (Exception ex) {
+			// Ignore silently for background polling
+		}
 	}
 
 	private String subtitle() {
@@ -64,9 +90,23 @@ public class menu extends JFrame implements ActionListener {
 		JLabel sectionTitle = AppTheme.sectionLabel("Available Modules");
 		topBar.add(sectionTitle, BorderLayout.WEST);
 
+		JPanel rightActions = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 12, 0));
+		rightActions.setOpaque(false);
+
+		themeButton = AppTheme.secondaryButton(AppTheme.isDarkMode ? "Light Mode" : "Dark Mode");
+		themeButton.addActionListener(this);
+		
+		notificationButton = AppTheme.secondaryButton("🔔 Notifications");
+		notificationButton.addActionListener(this);
+		
+		rightActions.add(themeButton);
+		rightActions.add(notificationButton);
+
 		logoutButton = AppTheme.dangerButton("Logout");
 		logoutButton.addActionListener(this);
-		topBar.add(logoutButton, BorderLayout.EAST);
+		rightActions.add(logoutButton);
+
+		topBar.add(rightActions, BorderLayout.EAST);
 
 		return topBar;
 	}
@@ -124,7 +164,16 @@ public class menu extends JFrame implements ActionListener {
 	@Override
 	public void actionPerformed(ActionEvent event) {
 		Object source = event.getSource();
-		if (source == logoutButton) {
+		if (source == themeButton) {
+			if (pollTimer != null) pollTimer.stop();
+			AppTheme.toggleTheme();
+			themeButton.setText(AppTheme.isDarkMode ? "Light Mode" : "Dark Mode");
+			menu app = new menu(username);
+			AppTheme.showFrame(app, "Customer Dashboard", getWidth(), getHeight());
+			dispose();
+		} else if (source == notificationButton) {
+			JOptionPane.showMessageDialog(this, "Notification feature is a placeholder. Check back later.");
+		} else if (source == logoutButton) {
 			logout();
 		} else if (source == profileButton) {
 			openProfile();
@@ -141,6 +190,7 @@ public class menu extends JFrame implements ActionListener {
 		int answer = JOptionPane.showConfirmDialog(this, "Are you sure you want to logout?", "Confirm logout",
 				JOptionPane.YES_NO_OPTION);
 		if (answer == JOptionPane.YES_OPTION) {
+			if (pollTimer != null) pollTimer.stop();
 			SessionContext.signOut();
 			login app = new login();
 			AppTheme.showFrame(app, "User Login", 520, 620);

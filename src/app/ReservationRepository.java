@@ -90,7 +90,7 @@ public class ReservationRepository {
 		return reservationCode;
 	}
 
-	public List<ReservationRecord> findReservations(String username, String status, String floor) throws Exception {
+	public List<ReservationRecord> findReservations(String username, String status, String floor, java.time.LocalDate dateFilter) throws Exception {
 		String sql = "select r.reservation_id,r.reservation_code,r.username,r.slot_id,s.floor,s.slot_type,"
 				+ "r.start_time,r.end_time,r.status,r.customer_name,r.email,r.phone,r.vehicle_plate,r.qr_payload "
 				+ "from reservations r join parking_slots s on r.slot_id=s.slot_id where 1=1";
@@ -107,6 +107,10 @@ public class ReservationRepository {
 		if (floor != null && !floor.trim().equalsIgnoreCase("All")) {
 			sql += " and s.floor=?";
 			parameters.add(floor.trim());
+		}
+		if (dateFilter != null) {
+			sql += " and date(r.start_time) = ?";
+			parameters.add(java.sql.Date.valueOf(dateFilter));
 		}
 		sql += " order by r.start_time desc";
 
@@ -323,6 +327,26 @@ public class ReservationRepository {
 			statement.setString(4, message);
 			statement.setString(5, "queued");
 			statement.executeUpdate();
+		}
+	}
+
+	public int getUnreadNotificationCount(String username) throws Exception {
+		if (username == null) return 0;
+		String sql = "select count(*) from notification_log n join reservations r on n.reservation_code = r.reservation_code "
+				+ "where r.username = ? and n.status = 'queued'";
+		try (PreparedStatement statement = conn.prepareStatement(sql)) {
+			statement.setString(1, username);
+			try (ResultSet resultSet = statement.executeQuery()) {
+				return resultSet.next() ? resultSet.getInt(1) : 0;
+			}
+		}
+	}
+
+	public int getAdminNotificationCount() throws Exception {
+		String sql = "select count(*) from reservations where status = 'reserved'";
+		try (PreparedStatement statement = conn.prepareStatement(sql);
+				ResultSet resultSet = statement.executeQuery()) {
+			return resultSet.next() ? resultSet.getInt(1) : 0;
 		}
 	}
 

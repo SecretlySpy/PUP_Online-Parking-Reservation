@@ -1,7 +1,9 @@
 package adminmanagement;
 
 import app.AppTheme;
+import app.ReservationRepository;
 import app.SessionContext;
+import DatabaseConnection.ConnectionDB;
 
 import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
@@ -17,6 +19,7 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 /**
  * Main navigation hub for administrator workflows.
@@ -29,11 +32,33 @@ public class menu extends JFrame implements ActionListener {
 	private JButton reservationButton;
 	private JButton reportsButton;
 	private JButton logoutButton;
+	private JButton themeButton;
+	private JButton notificationButton;
 	private JPanel moduleGrid;
+	private Timer pollTimer;
+	private ReservationRepository repository;
 
 	public menu() {
 		AppTheme.install();
+		this.repository = new ReservationRepository(ConnectionDB.getConnection());
 		setContentPane(AppTheme.shell("Admin Dashboard", "Manage parking operations from one place.", buildContent()));
+		
+		pollTimer = new Timer(5000, e -> updateNotificationCount());
+		pollTimer.start();
+		updateNotificationCount();
+	}
+
+	private void updateNotificationCount() {
+		try {
+			int count = repository.getAdminNotificationCount();
+			if (count > 0) {
+				notificationButton.setText("🔔 Pending (" + count + ")");
+			} else {
+				notificationButton.setText("🔔 Pending");
+			}
+		} catch (Exception ex) {
+			// Ignore silently for background polling
+		}
 	}
 
 	private JPanel buildContent() {
@@ -49,9 +74,23 @@ public class menu extends JFrame implements ActionListener {
 		topBar.setOpaque(false);
 		topBar.add(AppTheme.sectionLabel("Operations"), BorderLayout.WEST);
 
+		JPanel rightActions = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 12, 0));
+		rightActions.setOpaque(false);
+
+		themeButton = AppTheme.secondaryButton(AppTheme.isDarkMode ? "Light Mode" : "Dark Mode");
+		themeButton.addActionListener(this);
+		
+		notificationButton = AppTheme.secondaryButton("🔔 Pending");
+		notificationButton.addActionListener(this);
+		
+		rightActions.add(themeButton);
+		rightActions.add(notificationButton);
+
 		logoutButton = AppTheme.dangerButton("Logout");
 		logoutButton.addActionListener(this);
-		topBar.add(logoutButton, BorderLayout.EAST);
+		rightActions.add(logoutButton);
+
+		topBar.add(rightActions, BorderLayout.EAST);
 
 		return topBar;
 	}
@@ -112,7 +151,17 @@ public class menu extends JFrame implements ActionListener {
 	@Override
 	public void actionPerformed(ActionEvent event) {
 		Object source = event.getSource();
-		if (source == logoutButton) {
+		if (source == themeButton) {
+			if (pollTimer != null) pollTimer.stop();
+			AppTheme.toggleTheme();
+			themeButton.setText(AppTheme.isDarkMode ? "Light Mode" : "Dark Mode");
+			menu app = new menu();
+			AppTheme.showFrame(app, "Admin Dashboard", getWidth(), getHeight());
+			dispose();
+		} else if (source == notificationButton) {
+			if (pollTimer != null) pollTimer.stop();
+			openReservations();
+		} else if (source == logoutButton) {
 			logout();
 		} else if (source == customerButton) {
 			openCustomerProfile();
@@ -133,6 +182,7 @@ public class menu extends JFrame implements ActionListener {
 		int answer = JOptionPane.showConfirmDialog(this, "Are you sure you want to logout?", "Confirm logout",
 				JOptionPane.YES_NO_OPTION);
 		if (answer == JOptionPane.YES_OPTION) {
+			if (pollTimer != null) pollTimer.stop();
 			SessionContext.signOut();
 			login app = new login();
 			AppTheme.showFrame(app, "Admin Login", 540, 640);

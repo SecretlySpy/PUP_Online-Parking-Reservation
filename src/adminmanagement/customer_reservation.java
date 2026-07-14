@@ -11,7 +11,11 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
+
+import com.toedter.calendar.JCalendar;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -39,6 +43,7 @@ public class customer_reservation extends JFrame implements ActionListener {
 	private JComboBox<String> floorFilterBox;
 	private JComboBox<String> statusUpdateBox;
 	private JLabel statusLabel;
+	private JCalendar calendar;
 
 	public customer_reservation() {
 		AppTheme.install();
@@ -51,7 +56,12 @@ public class customer_reservation extends JFrame implements ActionListener {
 	private JPanel buildContent() {
 		JPanel content = AppTheme.card();
 		content.setLayout(new BorderLayout(0, 16));
+		
+		calendar = new JCalendar();
+		calendar.addPropertyChangeListener("calendar", evt -> loadReservations());
+		
 		content.add(buildToolbar(), BorderLayout.NORTH);
+		content.add(calendar, BorderLayout.WEST);
 		content.add(buildTable(), BorderLayout.CENTER);
 		content.add(buildStatus(), BorderLayout.SOUTH);
 		return content;
@@ -112,8 +122,12 @@ public class customer_reservation extends JFrame implements ActionListener {
 		};
 
 		try {
+			java.time.LocalDate selectedDate = null;
+			if (calendar != null && calendar.getDate() != null) {
+				selectedDate = calendar.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+			}
 			List<ReservationRecord> reservations = repository.findReservations(null,
-					(String) statusFilterBox.getSelectedItem(), (String) floorFilterBox.getSelectedItem());
+					(String) statusFilterBox.getSelectedItem(), (String) floorFilterBox.getSelectedItem(), selectedDate);
 			for (ReservationRecord reservation : reservations) {
 				model.addRow(new Object[] { reservation.getReservationCode(), reservation.getUsername(),
 						reservation.getCustomerName(), reservation.getSlotId(), reservation.getFloor(),

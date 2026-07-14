@@ -39,6 +39,7 @@ public class billingmanagement extends JFrame implements ActionListener {
 	private JDateChooser parkedDateChooser;
 	private JButton calculateButton;
 	private JButton submitButton;
+	private JButton exportButton;
 	private JButton menuButton;
 	private JButton logoutButton;
 	private JTextArea summaryArea;
@@ -113,16 +114,19 @@ public class billingmanagement extends JFrame implements ActionListener {
 
 		calculateButton = AppTheme.primaryButton("Total");
 		submitButton = AppTheme.secondaryButton("Submit");
+		exportButton = AppTheme.secondaryButton("Export");
 		menuButton = AppTheme.secondaryButton("Back to Menu");
 		logoutButton = AppTheme.dangerButton("Logout");
 
 		calculateButton.addActionListener(this);
 		submitButton.addActionListener(this);
+		exportButton.addActionListener(this);
 		menuButton.addActionListener(this);
 		logoutButton.addActionListener(this);
 
 		actions.add(calculateButton);
 		actions.add(submitButton);
+		actions.add(exportButton);
 		actions.add(menuButton);
 		actions.add(logoutButton);
 		form.add(actions, wideConstraints(row));
@@ -170,6 +174,8 @@ public class billingmanagement extends JFrame implements ActionListener {
 			calculateTotal();
 		} else if (source == submitButton) {
 			writeSummary();
+		} else if (source == exportButton) {
+			exportSummary();
 		} else if (source == menuButton) {
 			menu app = new menu();
 			AppTheme.showFrame(app, "Admin Menu", 1060, 600);
@@ -211,6 +217,26 @@ public class billingmanagement extends JFrame implements ActionListener {
 				+ plateField.getText().trim() + "\nBrand: " + brandField.getText().trim() + "\nSlot #: "
 				+ slotField.getText().trim() + "\nDate Parked: " + date + "\nPayment: "
 				+ paymentBox.getSelectedItem() + "\n" + totalLabel.getText());
+	}
+
+	private void exportSummary() {
+		if (summaryArea.getText().contains("will appear here")) {
+			javax.swing.JOptionPane.showMessageDialog(this, "Please submit the form to generate a summary first.");
+			return;
+		}
+		javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+		chooser.setDialogTitle("Save Billing Summary");
+		chooser.setSelectedFile(new java.io.File("Invoice_" + invoiceField.getText().trim() + ".txt"));
+		if (chooser.showSaveDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+			try (java.io.FileWriter writer = new java.io.FileWriter(chooser.getSelectedFile())) {
+				writer.write("PUP Online Parking Reservation - Billing Summary\n");
+				writer.write("================================================\n\n");
+				writer.write(summaryArea.getText());
+				javax.swing.JOptionPane.showMessageDialog(this, "Summary exported successfully.");
+			} catch (Exception ex) {
+				AppTheme.showError(this, "Failed to export summary", ex);
+			}
+		}
 	}
 
 	public static void main(String[] args) {

@@ -36,6 +36,7 @@ public class reservation_history extends JFrame implements ActionListener {
 	private JButton menuButton;
 	private JButton bookButton;
 	private JButton deleteButton;
+	private JButton exportButton;
 
 	public reservation_history(String username) {
 		AppTheme.install();
@@ -61,16 +62,19 @@ public class reservation_history extends JFrame implements ActionListener {
 
 		refreshButton = AppTheme.primaryButton("Refresh");
 		bookButton = AppTheme.secondaryButton("New Reservation");
+		exportButton = AppTheme.primaryButton("Export Receipt");
 		deleteButton = AppTheme.dangerButton("Delete");
 		menuButton = AppTheme.secondaryButton("Back to Menu");
 
 		refreshButton.addActionListener(this);
 		bookButton.addActionListener(this);
+		exportButton.addActionListener(this);
 		deleteButton.addActionListener(this);
 		menuButton.addActionListener(this);
 
 		toolbar.add(refreshButton);
 		toolbar.add(bookButton);
+		toolbar.add(exportButton);
 		toolbar.add(deleteButton);
 		toolbar.add(menuButton);
 		return toolbar;
@@ -98,7 +102,7 @@ public class reservation_history extends JFrame implements ActionListener {
 		};
 
 		try {
-			List<ReservationRecord> reservations = repository.findReservations(username, "All", "All");
+			List<ReservationRecord> reservations = repository.findReservations(username, "All", "All", null);
 			for (ReservationRecord reservation : reservations) {
 				model.addRow(new Object[] { reservation.getReservationCode(), reservation.getSlotId(),
 						reservation.getFloor(), reservation.getSlotType(), DISPLAY_TIME.format(reservation.getStartTime()),
@@ -123,12 +127,48 @@ public class reservation_history extends JFrame implements ActionListener {
 			reservation app = new reservation(username);
 			AppTheme.showFrame(app, "Book Parking Slot", 1180, 720);
 			dispose();
+		} else if (source == exportButton) {
+			exportSelectedReceipt();
 		} else if (source == deleteButton) {
 			deleteSelectedReservation();
 		} else if (source == menuButton) {
 			menu app = new menu(username);
 			AppTheme.showFrame(app, "User Menu", 980, 540);
 			dispose();
+		}
+	}
+
+	private void exportSelectedReceipt() {
+		int selectedRow = table.getSelectedRow();
+		if (selectedRow < 0) {
+			statusLabel.setText("Select a reservation to export its receipt.");
+			return;
+		}
+
+		String code = String.valueOf(table.getValueAt(selectedRow, 0));
+		String slot = String.valueOf(table.getValueAt(selectedRow, 1));
+		String start = String.valueOf(table.getValueAt(selectedRow, 4));
+		String end = String.valueOf(table.getValueAt(selectedRow, 5));
+		String status = String.valueOf(table.getValueAt(selectedRow, 6));
+		String payload = String.valueOf(table.getValueAt(selectedRow, 7));
+
+		javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+		chooser.setDialogTitle("Save Receipt");
+		chooser.setSelectedFile(new java.io.File("Receipt_" + code + ".txt"));
+		if (chooser.showSaveDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+			try (java.io.FileWriter writer = new java.io.FileWriter(chooser.getSelectedFile())) {
+				writer.write("PUP Online Parking Reservation - Receipt\n");
+				writer.write("========================================\n\n");
+				writer.write("Reservation Code: " + code + "\n");
+				writer.write("Slot ID: " + slot + "\n");
+				writer.write("Start Time: " + start + "\n");
+				writer.write("End Time: " + end + "\n");
+				writer.write("Status: " + status + "\n\n");
+				writer.write("Verification Payload: \n" + payload + "\n");
+				statusLabel.setText("Receipt exported successfully to " + chooser.getSelectedFile().getName());
+			} catch (Exception ex) {
+				AppTheme.showError(this, "Failed to export receipt", ex);
+			}
 		}
 	}
 

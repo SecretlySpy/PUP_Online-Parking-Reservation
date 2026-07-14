@@ -4,7 +4,7 @@ import DatabaseConnection.ConnectionDB;
 import app.AppTheme;
 import app.ParkingSlot;
 import app.ReservationRepository;
-import com.toedter.calendar.JDateChooser;
+import com.toedter.calendar.JCalendar;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -42,7 +42,7 @@ public class reservation extends JFrame implements ActionListener {
 	private JComboBox<String> availabilityBox;
 	private JComboBox<String> startHourBox;
 	private JComboBox<String> endHourBox;
-	private JDateChooser dateChooser;
+	private JCalendar calendar;
 	private JTable slotTable;
 	private JTextField nameField;
 	private JTextField emailField;
@@ -86,7 +86,6 @@ public class reservation extends JFrame implements ActionListener {
 				new String[] { "All", "Standard", "Compact", "Accessible", "EV", "Motorcycle" });
 		availabilityBox = new JComboBox<String>(new String[] { "All", "Available", "Reserved", "Occupied",
 				"Maintenance" });
-		dateChooser = new JDateChooser(new Date());
 		startHourBox = new JComboBox<String>(hours());
 		endHourBox = new JComboBox<String>(hours());
 		startHourBox.setSelectedItem("08:00");
@@ -101,8 +100,6 @@ public class reservation extends JFrame implements ActionListener {
 		toolbar.add(typeBox);
 		toolbar.add(AppTheme.label("Availability"));
 		toolbar.add(availabilityBox);
-		toolbar.add(AppTheme.label("Date"));
-		toolbar.add(dateChooser);
 		toolbar.add(AppTheme.label("From"));
 		toolbar.add(startHourBox);
 		toolbar.add(AppTheme.label("To"));
@@ -114,6 +111,11 @@ public class reservation extends JFrame implements ActionListener {
 	private JPanel buildBody() {
 		JPanel body = new JPanel(new BorderLayout(16, 0));
 		body.setOpaque(false);
+
+		calendar = new JCalendar();
+		calendar.addPropertyChangeListener("calendar", evt -> loadSlots());
+		body.add(calendar, BorderLayout.WEST);
+
 		body.add(buildTable(), BorderLayout.CENTER);
 		body.add(buildCustomerForm(), BorderLayout.EAST);
 		return body;
@@ -260,7 +262,7 @@ public class reservation extends JFrame implements ActionListener {
 	}
 
 	private LocalDateTime selectedDateTime(String hour) {
-		Date date = dateChooser.getDate() == null ? new Date() : dateChooser.getDate();
+		Date date = calendar.getDate() == null ? new Date() : calendar.getDate();
 		String[] parts = hour.split(":");
 		return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().atTime(Integer.parseInt(parts[0]),
 				Integer.parseInt(parts[1]));
