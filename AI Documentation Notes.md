@@ -10,7 +10,7 @@
 ## 0. Document Metadata
 
 - **Field:** Value
-- **Analysis date:** 2026-06-28
+- **Analysis date:** 2026-07-18
 - **Language / framework:** Java (SE 16+; compiled and verified under JDK 25), Java Swing GUI, JDBC.
 - **Database:** MySQL 8.0 (Docker-provisioned), accessed via `mysql-connector-java-8.0.19.jar`.
 - **Third-party libs:** `mysql-connector-java-8.0.19.jar`, `jcalendar-1.4.jar` (date pickers). Located in `build/lib/`.
